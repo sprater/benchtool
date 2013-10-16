@@ -10,7 +10,7 @@ Tool to run an ingest benchmark against Fedora 3
 ### Usage
 
 ```
-BenchToolFC3 <fedora-uri> <user> <pass> <num-objects> <datatstream-size>
+BenchToolFC3 <fedora-uri> <user> <pass> <num-objects> <datastream-size>
 ```
 
 ##### Example
@@ -28,7 +28,7 @@ Tool to run an ingest benchmark against Fedora 4
 ### Usage
 
 ``` 
-BenchToolFC4 <fedora-uri> <num-objects> <datatstream-size> <num-threads>
+BenchToolFC4 <fedora-uri> <num-objects> <datastream-size> <num-threads>
 ```
 
 #### Example
