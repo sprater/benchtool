@@ -1,7 +1,7 @@
-Compare ingest performance of Fedora 3 and Fedora 4
+BenchTool for Fedora 3/4
 =======================================================================================
-
-The suite consists of two main classes responsible for running the benchmark on fcrepo3/fcrepo4. 
+This is a simple ingest benchmark to compare performance of Fedora 3 and Fedora 4. 
+The suite consists of two main classes responsible for running the benchmarks. 
 
 Fedora 3
 --------
