@@ -29,6 +29,8 @@ public class BenchToolFC4 {
 
     private static int maxThreads = 15;
 
+    private static long completeDuration = 0l;
+
 
     public static void main(String[] args) {
         String uri = args[0];
@@ -41,7 +43,6 @@ public class BenchToolFC4 {
         FileOutputStream ingestOut = null;
         try {
             ingestOut = new FileOutputStream("ingest.log");
-            long start = System.currentTimeMillis();
             for (int i = 0; i < numDatastreams; i++) {
                 while (numThreads >= maxThreads){
                     Thread.sleep(10);
@@ -56,7 +57,7 @@ public class BenchToolFC4 {
                 Thread.sleep(100);
             }
             System.out.println(" - ingest datastreams finished");
-            System.out.println("Complete ingest of " + numDatastreams + " files took " + (System.currentTimeMillis() - start) + " ms\n");
+            System.out.println("Complete ingest of " + numDatastreams + " files took " + completeDuration + " ms\n");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -105,14 +106,15 @@ public class BenchToolFC4 {
             String answer = IOUtils.toString(resp.getEntity().getContent());
             post.releaseConnection();
 
+            long duration = System.currentTimeMillis() - start;
+            BenchToolFC4.completeDuration+=duration;
+            IOUtils.write(duration + "\n", ingestOut);
+            BenchToolFC4.numThreads--;
             if (resp.getStatusLine().getStatusCode() != 201) {
                 System.out.println(answer);
-                BenchToolFC4.numThreads--;
                 throw new Exception("Unable to ingest object, fedora returned " +
                         resp.getStatusLine().getStatusCode());
             }
-            IOUtils.write((System.currentTimeMillis() - start) + "\n", ingestOut);
-            BenchToolFC4.numThreads--;
         }
 
         private byte[] getRandomBytes(int size) {
