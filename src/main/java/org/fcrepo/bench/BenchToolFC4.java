@@ -58,6 +58,7 @@ public class BenchToolFC4 {
             }
             System.out.println(" - ingest datastreams finished");
             System.out.println("Complete ingest of " + numDatastreams + " files took " + completeDuration + " ms\n");
+            System.out.println("Throughput was " + FORMATTER.format((numDatastreams * size /(1024d*1024d)) / (completeDuration/1000d)) + " mb/s");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
