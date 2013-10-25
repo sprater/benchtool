@@ -25,14 +25,26 @@ public class BenchToolFC4 {
 
     private static final DecimalFormat FORMATTER = new DecimalFormat("000.00");
 
-    private static int numThreads = 0;
+    private volatile int numThreads = 0;
 
-    private static int maxThreads = 15;
+    private volatile int maxThreads = 15;
 
-    private static long completeDuration = 0l;
+    private volatile long completeDuration = 0l;
+
+    public synchronized void addDuration(long duration) {
+        completeDuration+=duration;
+    }
+
+    public synchronized void decreaseRunningThreads() {
+        numThreads--;
+    }
+
+    public synchronized void increaseRunningThreads() {
+        numThreads++;
+    }
 
 
-    public static void main(String[] args) {
+    private void runBench(String[] args) {
         String uri = args[0];
         int numDatastreams = Integer.parseInt(args[1]);
         int size = Integer.parseInt(args[2]);
@@ -47,7 +59,7 @@ public class BenchToolFC4 {
                 while (numThreads >= maxThreads){
                     Thread.sleep(10);
                 }
-                Thread t = new Thread(new Ingester(uri, ingestOut, "benchfc4-" + (i+1), size));
+                Thread t = new Thread(new Ingester(this, uri, ingestOut, "benchfc4-" + (i+1), size));
                 t.start();
                 numThreads++;
                 float percent = (float) (i + 1) / (float) numDatastreams * 100f;
@@ -64,7 +76,11 @@ public class BenchToolFC4 {
         } finally {
             IOUtils.closeQuietly(ingestOut);
         }
+    }
 
+    public static void main(String[] args) {
+        BenchToolFC4 bench = new BenchToolFC4();
+        bench.runBench(args);
     }
 
     private static class Ingester implements Runnable{
@@ -79,7 +95,9 @@ public class BenchToolFC4 {
 
         private final String pid;
 
-        public Ingester(String fedoraUri, OutputStream out, String pid, int size) throws IOException {
+        private final BenchToolFC4 benchTool;
+
+        public Ingester(BenchToolFC4 parent, String fedoraUri, OutputStream out, String pid, int size) throws IOException {
             super();
             ingestOut = out;
             if (fedoraUri.charAt(fedoraUri.length() - 1) == '/') {
@@ -88,6 +106,7 @@ public class BenchToolFC4 {
             this.fedoraUri = URI.create(fedoraUri);
             this.size = size;
             this.pid = pid;
+            this.benchTool = parent;
         }
 
         public void run() {
@@ -108,9 +127,9 @@ public class BenchToolFC4 {
             post.releaseConnection();
 
             long duration = System.currentTimeMillis() - start;
-            BenchToolFC4.completeDuration+=duration;
+            this.benchTool.addDuration(duration);
             IOUtils.write(duration + "\n", ingestOut);
-            BenchToolFC4.numThreads--;
+            this.benchTool.decreaseRunningThreads();
             if (resp.getStatusLine().getStatusCode() != 201) {
                 System.out.println(answer);
                 throw new Exception("Unable to ingest object, fedora returned " +
