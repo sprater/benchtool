@@ -55,8 +55,10 @@ public class BenchToolFC4 {
             while(numThreads > 0) {
                 Thread.sleep(100);
             }
+            long duration = System.currentTimeMillis() - start;
             System.out.println(" - ingest datastreams finished");
-            System.out.println("Complete ingest of " + numDatastreams + " files took " + (System.currentTimeMillis() - start) + " ms\n");
+            System.out.println("Complete ingest of " + numDatastreams + " files took " + duration + " ms\n");
+            System.out.println("throughput was  " + FORMATTER.format((double) numDatastreams * (double) size /1024d / duration) + " ms\n");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
