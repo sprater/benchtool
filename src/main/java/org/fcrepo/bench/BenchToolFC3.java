@@ -101,16 +101,20 @@ public class BenchToolFC3 {
         BenchToolFC3 bench = null;
         System.out.println("generating " + numDatastreams +
                 " datastreams with size " + size);
+        long start = System.currentTimeMillis();
         try {
             bench = new BenchToolFC3(uri, user, pass);
-            String objectId = bench.ingestObject("test-1");
-            System.out.println("ingested test object");
             for (int i = 0; i < numDatastreams; i++) {
+                String objectId = bench.ingestObject("test-" +i);
                 bench.ingestDatastream(objectId, "ds-" + (i + 1), size);
                 float percent = (float) (i + 1) / (float) numDatastreams * 100f;
                 System.out.print("\r" + FORMATTER.format(percent) + "%");
             }
+            long duration = System.currentTimeMillis() - start;
             System.out.println(" - ingest datastreams finished");
+            System.out.println("Complete ingest of " + numDatastreams + " files took " + duration + " ms\n");
+            System.out.println("throughput was  " + FORMATTER.format((double) numDatastreams * (double) size /1024d / duration) + " mb/s\n");
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
