@@ -9,9 +9,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.text.DecimalFormat;
-import java.util.HashSet;
 import java.util.Random;
-import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -31,15 +29,6 @@ public class BenchToolFC4 {
 
     private static int maxThreads = 15;
 
-    private static Set<String> nodes = new HashSet();
-
-    private static void addNode(String nodeName) {
-        if (nodeName != null && nodeName.length() > 0) {
-            synchronized (nodes) {
-                nodes.add(nodeName);
-            }
-        }
-    }
 
     public static void main(String[] args) {
         String uri = args[0];
@@ -75,10 +64,6 @@ public class BenchToolFC4 {
             System.out.println("throughput was  " +
                     FORMATTER.format((double) numDatastreams * (double) size /
                             1024d / duration) + " mb/s\n");
-            System.out.println("The following nodes were used in the request:");
-            for (String nodeName:nodes) {
-                System.out.println(nodeName);
-            }
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -137,8 +122,6 @@ public class BenchToolFC4 {
                         "Unable to ingest object, fedora returned " +
                                 resp.getStatusLine().getStatusCode());
             }
-            URI nodeUri = URI.create(resp.getLastHeader("Location").getValue());
-            BenchToolFC4.addNode(nodeUri.getHost() + ":" + nodeUri.getPort());
             IOUtils.write((System.currentTimeMillis() - start) + "\n",
                     ingestOut);
             BenchToolFC4.numThreads--;
