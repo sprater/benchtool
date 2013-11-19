@@ -9,7 +9,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.text.DecimalFormat;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -29,6 +31,15 @@ public class BenchToolFC4 {
 
     private static int maxThreads = 15;
 
+    private static Set<String> nodes = new HashSet();
+
+    private static void addNode(String nodeName) {
+        if (nodeName != null && nodeName.length() > 0) {
+            synchronized (nodes) {
+                nodes.add(nodeName);
+            }
+        }
+    }
 
     public static void main(String[] args) {
         String uri = args[0];
@@ -43,22 +54,31 @@ public class BenchToolFC4 {
             ingestOut = new FileOutputStream("ingest.log");
             long start = System.currentTimeMillis();
             for (int i = 0; i < numDatastreams; i++) {
-                while (numThreads >= maxThreads){
+                while (numThreads >= maxThreads) {
                     Thread.sleep(10);
                 }
-                Thread t = new Thread(new Ingester(uri, ingestOut, "benchfc4-" + (i+1), size));
+                Thread t =
+                        new Thread(new Ingester(uri, ingestOut, "benchfc4-" +
+                                (i + 1), size));
                 t.start();
                 numThreads++;
                 float percent = (float) (i + 1) / (float) numDatastreams * 100f;
                 System.out.print("\r" + FORMATTER.format(percent) + "%");
             }
-            while(numThreads > 0) {
+            while (numThreads > 0) {
                 Thread.sleep(100);
             }
             long duration = System.currentTimeMillis() - start;
             System.out.println(" - ingest datastreams finished");
-            System.out.println("Complete ingest of " + numDatastreams + " files took " + duration + " ms\n");
-            System.out.println("throughput was  " + FORMATTER.format((double) numDatastreams * (double) size /1024d / duration) + " mb/s\n");
+            System.out.println("Complete ingest of " + numDatastreams +
+                    " files took " + duration + " ms\n");
+            System.out.println("throughput was  " +
+                    FORMATTER.format((double) numDatastreams * (double) size /
+                            1024d / duration) + " mb/s\n");
+            System.out.println("The following nodes were used in the request:");
+            for (String nodeName:nodes) {
+                System.out.println(nodeName);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -67,7 +87,7 @@ public class BenchToolFC4 {
 
     }
 
-    private static class Ingester implements Runnable{
+    private static class Ingester implements Runnable {
 
         private final DefaultHttpClient client = new DefaultHttpClient();
 
@@ -79,7 +99,8 @@ public class BenchToolFC4 {
 
         private final String pid;
 
-        public Ingester(String fedoraUri, OutputStream out, String pid, int size) throws IOException {
+        public Ingester(String fedoraUri, OutputStream out, String pid, int size)
+                throws IOException {
             super();
             ingestOut = out;
             if (fedoraUri.charAt(fedoraUri.length() - 1) == '/') {
@@ -99,7 +120,9 @@ public class BenchToolFC4 {
         }
 
         private void ingestObject() throws Exception {
-            HttpPost post = new HttpPost(fedoraUri.toASCIIString() + "/rest/objects/" + pid + "/DS1/fcr:content");
+            HttpPost post =
+                    new HttpPost(fedoraUri.toASCIIString() + "/rest/objects/" +
+                            pid + "/DS1/fcr:content");
             post.setHeader("Content-Type", "application/octet-stream");
             post.setEntity(new ByteArrayEntity(getRandomBytes(size)));
             long start = System.currentTimeMillis();
@@ -110,10 +133,14 @@ public class BenchToolFC4 {
             if (resp.getStatusLine().getStatusCode() != 201) {
                 System.out.println(answer);
                 BenchToolFC4.numThreads--;
-                throw new Exception("Unable to ingest object, fedora returned " +
-                        resp.getStatusLine().getStatusCode());
+                throw new Exception(
+                        "Unable to ingest object, fedora returned " +
+                                resp.getStatusLine().getStatusCode());
             }
-            IOUtils.write((System.currentTimeMillis() - start) + "\n", ingestOut);
+            URI nodeUri = URI.create(resp.getLastHeader("Location").getValue());
+            BenchToolFC4.addNode(nodeUri.getHost() + ":" + nodeUri.getPort());
+            IOUtils.write((System.currentTimeMillis() - start) + "\n",
+                    ingestOut);
             BenchToolFC4.numThreads--;
         }
 
