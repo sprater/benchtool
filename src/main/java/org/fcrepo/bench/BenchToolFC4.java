@@ -16,6 +16,13 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 /**
  * @author frank asseg
@@ -30,16 +37,29 @@ public class BenchToolFC4 {
     private static int maxThreads = 15;
 
 
+    private static final Logger LOG =
+            LoggerFactory.getLogger(BenchToolFC4.class);
+
+
+    private static int getClusterSize(String uri) throws IOException {
+        final Model model = ModelFactory.createDefaultModel();
+        model.read(uri + "/rest");
+        StmtIterator it = model.listStatements(model.createResource(uri + "/rest/") ,model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"), (RDFNode) null);
+        return Integer.parseInt(it.next().getObject().asLiteral().getString());
+
+    }
+
     public static void main(String[] args) {
         String uri = args[0];
         int numDatastreams = Integer.parseInt(args[1]);
         int size = Integer.parseInt(args[2]);
         maxThreads = Integer.parseInt(args[3]);
         BenchToolFC4 bench = null;
-        System.out.println("generating " + numDatastreams +
-                " datastreams with size " + size);
+        LOG.info("generating {} datastreams with size {}", numDatastreams, size);
         FileOutputStream ingestOut = null;
         try {
+            final int initialClusterSize = getClusterSize(uri);
+            LOG.info("Initial cluster size is {}", initialClusterSize);
             ingestOut = new FileOutputStream("ingest.log");
             long start = System.currentTimeMillis();
             for (int i = 0; i < numDatastreams; i++) {
@@ -59,11 +79,13 @@ public class BenchToolFC4 {
             }
             long duration = System.currentTimeMillis() - start;
             System.out.println(" - ingest datastreams finished");
-            System.out.println("Complete ingest of " + numDatastreams +
-                    " files took " + duration + " ms\n");
-            System.out.println("throughput was  " +
-                    FORMATTER.format((double) numDatastreams * (double) size /
-                            1024d / duration) + " mb/s\n");
+            LOG.info("Ingest of {} files took {} ms", numDatastreams, duration);
+            final int endClusterSize = getClusterSize(uri);
+            if (initialClusterSize != endClusterSize) {
+                LOG.warn("Initial cluster size was {} but the cluster had size {} at the end", initialClusterSize, endClusterSize);
+            }
+            LOG.info("Throughput was {} mb/s",FORMATTER.format((double) numDatastreams * (double) size /
+                            1024d / duration));
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -116,7 +138,7 @@ public class BenchToolFC4 {
             post.releaseConnection();
 
             if (resp.getStatusLine().getStatusCode() != 201) {
-                System.out.println(answer);
+                LOG.error(answer);
                 BenchToolFC4.numThreads--;
                 throw new Exception(
                         "Unable to ingest object, fedora returned " +
