@@ -9,13 +9,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.text.DecimalFormat;
-import java.util.Random;
 import java.util.UUID;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +45,9 @@ public class BenchToolFC4 {
         final Model model = ModelFactory.createDefaultModel();
         model.read(uri + "/rest");
         StmtIterator it = model.listStatements(model.createResource(uri + "/rest/") ,model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"), (RDFNode) null);
+        if (!it.hasNext()) {
+            return 0;
+        }
         return Integer.parseInt(it.next().getObject().asLiteral().getString());
 
     }
@@ -53,7 +55,7 @@ public class BenchToolFC4 {
     public static void main(String[] args) {
         String uri = args[0];
         int numDatastreams = Integer.parseInt(args[1]);
-        int size = Integer.parseInt(args[2]);
+        long size = Long.parseLong(args[2]);
         maxThreads = Integer.parseInt(args[3]);
         BenchToolFC4 bench = null;
         LOG.info("generating {} datastreams with size {}", numDatastreams, size);
@@ -103,11 +105,11 @@ public class BenchToolFC4 {
 
         private final OutputStream ingestOut;
 
-        private final int size;
+        private final long size;
 
         private final String pid;
 
-        public Ingester(String fedoraUri, OutputStream out, String pid, int size)
+        public Ingester(String fedoraUri, OutputStream out, String pid, long size)
                 throws IOException {
             super();
             ingestOut = out;
@@ -133,7 +135,7 @@ public class BenchToolFC4 {
                     new HttpPost(fedoraUri.toASCIIString() + "/rest/objects/" +
                             pid + "/DS1/fcr:content");
             post.setHeader("Content-Type", "application/octet-stream");
-            post.setEntity(new ByteArrayEntity(getRandomBytes(size)));
+            post.setEntity(new InputStreamEntity(new BenchToolInputStream(size), size));
             long start = System.currentTimeMillis();
             HttpResponse resp = client.execute(post);
             String answer = IOUtils.toString(resp.getEntity().getContent());
@@ -149,13 +151,6 @@ public class BenchToolFC4 {
             IOUtils.write((System.currentTimeMillis() - start) + "\n",
                     ingestOut);
             BenchToolFC4.numThreads--;
-        }
-
-        private byte[] getRandomBytes(int size) {
-            byte[] data = new byte[size];
-            Random r = new Random();
-            r.nextBytes(data);
-            return data;
         }
     }
 }

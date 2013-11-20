@@ -9,14 +9,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.text.DecimalFormat;
-import java.util.Random;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 
 /**
@@ -70,7 +69,7 @@ public class BenchToolFC3 {
                 + objectId + "/datastreams/" + label
                 + "?versionable=true&controlGroup=M");
         post.setHeader("Content-Type", "application/octet-stream");
-        post.setEntity(new ByteArrayEntity(getRandomBytes(size)));
+        post.setEntity(new InputStreamEntity(new BenchToolInputStream(size),size));
         long start = System.currentTimeMillis();
         HttpResponse resp = client.execute(post);
         IOUtils.write((System.currentTimeMillis() - start) + "\n", ingestOut);
@@ -79,13 +78,6 @@ public class BenchToolFC3 {
             throw new Exception("Unable to ingest datastream " + label
                     + " fedora returned " + resp.getStatusLine());
         }
-    }
-
-    private byte[] getRandomBytes(int size) {
-        byte[] data = new byte[size];
-        Random r = new Random();
-        r.nextBytes(data);
-        return data;
     }
 
     private void shutdown() {

@@ -26,6 +26,21 @@
       <artifactId>jena</artifactId>
       <version>2.6.4</version>
     </dependency>
+    <dependency>
+      <groupId>org.uncommons.maths</groupId>
+      <artifactId>uncommons-maths</artifactId>
+      <version>1.2.2</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>jfreechart</artifactId>
+          <groupId>jfree</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>jcommon</artifactId>
+          <groupId>jfree</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
