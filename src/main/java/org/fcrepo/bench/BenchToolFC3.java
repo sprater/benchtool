@@ -31,6 +31,13 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.apache.http.HttpHost;
+import org.apache.http.client.AuthCache;
+import org.apache.http.client.protocol.ClientContext;
+import org.apache.http.impl.auth.BasicScheme;
+import org.apache.http.impl.client.BasicAuthCache;
+import org.apache.http.protocol.BasicHttpContext;
+
 /**
  * Fedora 3 Benchmarking Tool
  * @author frank asseg
@@ -45,6 +52,7 @@ public class BenchToolFC3 {
     private final URI fedoraUri;
 
     private final OutputStream ingestOut;
+    private final BasicHttpContext authContext;
 
     public BenchToolFC3(String fedoraUri, String user, String pass)
             throws IOException {
@@ -58,6 +66,13 @@ public class BenchToolFC3 {
                 new AuthScope(this.fedoraUri.getHost(), this.fedoraUri
                         .getPort()),
                 new UsernamePasswordCredentials(user, pass));
+
+        // setup authcache to enable pre-emptive auth
+        AuthCache authCache = new BasicAuthCache();
+        BasicScheme basicAuth = new BasicScheme();
+        authCache.put(new HttpHost(this.fedoraUri.getHost(),this.fedoraUri.getPort()), basicAuth);
+        this.authContext = new BasicHttpContext();
+        authContext.setAttribute(ClientContext.AUTH_CACHE, authCache);
     }
 
     private String ingestObject(String label) throws Exception {
@@ -66,7 +81,7 @@ public class BenchToolFC3 {
                         fedoraUri.toASCIIString() +
                                 "/objects/new?format=info:fedora/fedora-system:FOXML-1.1&label=" +
                                 label);
-        HttpResponse resp = client.execute(post);
+        HttpResponse resp = client.execute(post,authContext);
         String answer = IOUtils.toString(resp.getEntity().getContent());
         post.releaseConnection();
 
@@ -85,7 +100,7 @@ public class BenchToolFC3 {
         post.setHeader("Content-Type", "application/octet-stream");
         post.setEntity(new InputStreamEntity(new BenchToolInputStream(size),size));
         long start = System.currentTimeMillis();
-        HttpResponse resp = client.execute(post);
+        HttpResponse resp = client.execute(post,authContext);
         IOUtils.write((System.currentTimeMillis() - start) + "\n", ingestOut);
         post.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 201) {
@@ -102,7 +117,7 @@ public class BenchToolFC3 {
         put.setHeader("Content-Type", "application/octet-stream");
         put.setEntity(new InputStreamEntity(new BenchToolInputStream(size),size));
         long start = System.currentTimeMillis();
-        HttpResponse resp = client.execute(put);
+        HttpResponse resp = client.execute(put,authContext);
         IOUtils.write((System.currentTimeMillis() - start) + "\n", ingestOut);
         put.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 200) {
@@ -116,7 +131,7 @@ public class BenchToolFC3 {
         HttpGet get = new HttpGet(fedoraUri.toASCIIString() + "/objects/"
                 + objectId + "/datastreams/" + label);
         long start = System.currentTimeMillis();
-        HttpResponse resp = client.execute(get);
+        HttpResponse resp = client.execute(get,authContext);
         InputStream in = resp.getEntity().getContent();
 		byte[] buf = new byte[8192];
         for ( int read = -1; (read = in.read(buf)) != -1;  ) { }
@@ -133,7 +148,7 @@ public class BenchToolFC3 {
         HttpDelete del = new HttpDelete(fedoraUri.toASCIIString() + "/objects/"
                 + objectId );
         long start = System.currentTimeMillis();
-        HttpResponse resp = client.execute(del);
+        HttpResponse resp = client.execute(del,authContext);
         IOUtils.write((System.currentTimeMillis() - start) + "\n", ingestOut);
         del.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 200) {
@@ -146,7 +161,7 @@ public class BenchToolFC3 {
         String uri = fedoraUri.toASCIIString() + "/objects?terms=test*"
                 + "&resultFormat=xml&pid=true&maxResults="+numObjects;
         HttpGet get = new HttpGet(uri);
-        HttpResponse resp = client.execute(get);
+        HttpResponse resp = client.execute(get,authContext);
 
         List<String> pids = new ArrayList<String>();
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
