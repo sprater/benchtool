@@ -12,7 +12,7 @@ import java.net.URI;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import org.uncommons.maths.random.XORShiftRNG;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -92,7 +92,7 @@ public class BenchToolFC3 {
         return answer;
     }
 
-    private void ingestDatastream(String objectId, String label, int size)
+    private void ingestDatastream(String objectId, String label, long size)
             throws Exception {
         HttpPost post = new HttpPost(fedoraUri.toASCIIString() + "/objects/"
                 + objectId + "/datastreams/" + label
@@ -109,7 +109,7 @@ public class BenchToolFC3 {
         }
     }
 
-    private void updateDatastream(String objectId, String label, int size)
+    private void updateDatastream(String objectId, String label, long size)
             throws Exception {
         HttpPut put = new HttpPut(fedoraUri.toASCIIString() + "/objects/"
                 + objectId + "/datastreams/" + label
@@ -185,7 +185,7 @@ public class BenchToolFC3 {
         String user = args[1];
         String pass = args[2];
         int numObjects = Integer.parseInt(args[3]);
-        int size = Integer.parseInt(args[4]);
+        long size = Integer.parseInt(args[4]);
         String action = "ingest";
         if ( args.length > 5 ) { action = args[5]; }
         BenchToolFC3 bench = null;
@@ -201,7 +201,7 @@ public class BenchToolFC3 {
             System.out.println("ingesting " + numObjects
                     + " objects with datastream size " + size);
         }
-        Random rnd = new Random();
+        XORShiftRNG rnd = new XORShiftRNG();
         List<String> pids = null;
         long start = System.currentTimeMillis();
         try {

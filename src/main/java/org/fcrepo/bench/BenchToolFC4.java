@@ -12,8 +12,8 @@ import java.net.URI;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.nio.charset.Charset;
+import org.uncommons.maths.random.XORShiftRNG;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.LineIterator;
@@ -31,6 +31,8 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
+import com.hp.hpl.jena.rdf.model.NodeIterator;
+import com.hp.hpl.jena.rdf.model.Property;
 
 /**
  * Fedora 4 Benchmarking Tool
@@ -66,17 +68,18 @@ public class BenchToolFC4 {
         HttpGet get = new HttpGet(uri);
         HttpResponse resp = client.execute(get);
         List<String> pids = new ArrayList<String>();
-        LineIterator it = IOUtils.lineIterator(resp.getEntity().getContent(),Charset.defaultCharset());
-        while ( it.hasNext() ) {
-            String line = it.nextLine();
-            if ( line.indexOf("http://fedora.info/definitions/v4/repository#hasChild") != -1 ) {
-                String children = it.nextLine();
-                String[] childURIs = children.split(",");
-                for ( int i = 0; i < childURIs.length && i < max; i++ ) {
-                    pids.add( childURIs[i].replaceAll(".*" + uri + "/","").replaceAll(">.*","") );
-                }
-                break;
+        Model m = ModelFactory.createDefaultModel();
+        m.read( resp.getEntity().getContent(), null, "TURTLE" );
+        Property hasChild = m.createProperty(
+                "http://fedora.info/definitions/v4/repository#", "hasChild");
+        NodeIterator childNodes = m.listObjectsOfProperty(hasChild);
+        while ( childNodes.hasNext() ) {
+            RDFNode child = childNodes.next();
+            if ( child.toString().startsWith(uri)
+                    && child.toString().length() > uri.length() ) {
+                pids.add( child.toString().replaceAll(".*" + uri + "/","") );
             }
+            if ( pids.size() >= max ) { break; }
         }
         get.releaseConnection();
         return pids;
@@ -102,7 +105,7 @@ public class BenchToolFC4 {
        
         FileOutputStream ingestOut = null;
         List<String> pids = null;
-        Random rnd = new Random();
+        XORShiftRNG rnd = new XORShiftRNG();
         try {
             final int initialClusterSize = getClusterSize(uri);
             LOG.info("Initial cluster size is {}", initialClusterSize);
@@ -229,7 +232,7 @@ public class BenchToolFC4 {
             if (resp.getStatusLine().getStatusCode() != 200) {
                 BenchToolFC4.numThreads--;
                 throw new Exception(
-                        "Unable to read object, fedora returned " +
+                        "Unable to read object: " + pid + ", fedora returned " +
                                 resp.getStatusLine().getStatusCode());
             }
             IOUtils.write((System.currentTimeMillis() - start) + "\n",
