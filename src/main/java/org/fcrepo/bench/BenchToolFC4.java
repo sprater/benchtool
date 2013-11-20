@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.text.DecimalFormat;
 import java.util.Random;
+import java.util.UUID;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -68,7 +69,7 @@ public class BenchToolFC4 {
                 }
                 Thread t =
                         new Thread(new Ingester(uri, ingestOut, "benchfc4-" +
-                                (i + 1), size));
+                                (i + 1) + "." + UUID.randomUUID(), size));
                 t.start();
                 numThreads++;
                 float percent = (float) (i + 1) / (float) numDatastreams * 100f;
@@ -118,6 +119,7 @@ public class BenchToolFC4 {
             this.pid = pid;
         }
 
+        @Override
         public void run() {
             try {
                 this.ingestObject();
