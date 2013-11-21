@@ -75,7 +75,7 @@ public class BenchToolFC4 {
                 t.start();
                 numThreads++;
                 float percent = (float) (i + 1) / (float) numDatastreams * 100f;
-                System.out.print("\r" + FORMATTER.format(percent) + "%");
+//                System.out.print("\r" + FORMATTER.format(percent) + "%");
             }
             while (numThreads > 0) {
                 Thread.sleep(100);
