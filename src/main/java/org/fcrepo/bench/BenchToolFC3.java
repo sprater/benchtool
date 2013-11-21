@@ -12,6 +12,7 @@ import java.net.URI;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.uncommons.maths.random.XORShiftRNG;
 
 import org.apache.commons.io.IOUtils;
@@ -201,7 +202,13 @@ public class BenchToolFC3 {
             System.out.println("ingesting " + numObjects
                     + " objects with datastream size " + size);
         }
-        XORShiftRNG rnd = new XORShiftRNG();
+        Random rnd;
+        if ( "java.util.Random".equals(System.getProperty("random.impl")) ) {
+            rnd = new Random();
+        } else {
+            rnd = new XORShiftRNG();
+        }
+
         List<String> pids = null;
         long start = System.currentTimeMillis();
         try {

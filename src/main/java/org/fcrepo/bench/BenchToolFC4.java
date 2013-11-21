@@ -13,6 +13,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.nio.charset.Charset;
+import java.util.Random;
 import org.uncommons.maths.random.XORShiftRNG;
 
 import org.apache.commons.io.IOUtils;
@@ -105,7 +106,12 @@ public class BenchToolFC4 {
        
         FileOutputStream ingestOut = null;
         List<String> pids = null;
-        XORShiftRNG rnd = new XORShiftRNG();
+        Random rnd = null;
+        if ( "java.util.Random".equals(System.getProperty("random.impl")) ) {
+            rnd = new Random();
+        } else {
+            rnd = new XORShiftRNG();
+        }
         try {
             final int initialClusterSize = getClusterSize(uri);
             LOG.info("Initial cluster size is {}", initialClusterSize);

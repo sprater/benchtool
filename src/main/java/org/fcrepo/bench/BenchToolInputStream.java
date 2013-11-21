@@ -6,6 +6,7 @@ package org.fcrepo.bench;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.util.Random;
 import org.uncommons.maths.random.XORShiftRNG;
 
 
@@ -17,12 +18,19 @@ public class BenchToolInputStream extends InputStream {
 
     private final long size;
     private long idx = 0;
-    /* quite the fast RNG from uncommons-math */
-    private final XORShiftRNG rng = new XORShiftRNG();
+    private final Random rng;
 
     public BenchToolInputStream(long size) {
         super();
         this.size = size;
+
+        if ( "java.util.Random".equals(System.getProperty("random.impl")) ) {
+            /* standard jdk random */
+            rng = new Random();
+        } else {
+            /* quite the fast RNG from uncommons-math */
+            rng = new XORShiftRNG();
+        }
     }
 
     /* (non-Javadoc)
