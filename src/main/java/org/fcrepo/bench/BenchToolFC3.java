@@ -129,12 +129,17 @@ public class BenchToolFC3 {
 
     private void readDatastream(String objectId, String label)
             throws Exception {
+        // read properties
+        String objCreated = readProperty(objectId, null, "objCreateDate");
+        String dsCreated = readProperty(objectId, "ds-1", "dsCreateDate");
+
+        // read datastream content
         HttpGet get = new HttpGet(fedoraUri.toASCIIString() + "/objects/"
-                + objectId + "/datastreams/" + label);
+                + objectId + "/datastreams/" + label + "/content");
         long start = System.currentTimeMillis();
         HttpResponse resp = client.execute(get,authContext);
         InputStream in = resp.getEntity().getContent();
-		byte[] buf = new byte[8192];
+        byte[] buf = new byte[8192];
         for ( int read = -1; (read = in.read(buf)) != -1;  ) { }
         IOUtils.write((System.currentTimeMillis() - start) + "\n", ingestOut);
         get.releaseConnection();
@@ -175,6 +180,25 @@ public class BenchToolFC3 {
         }
         get.releaseConnection();
         return pids;
+    }
+    private String readProperty(String pid, String dsName, String property) throws Exception {
+        String uri = fedoraUri.toASCIIString() + "/objects/" + pid;
+        if ( dsName != null ) { uri += "/datastreams/" + dsName; }
+        uri += "?format=xml";
+        HttpGet get = new HttpGet(uri);
+        HttpResponse resp = client.execute(get,authContext);
+
+        String value = null;
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document document = builder.parse( resp.getEntity().getContent() );
+        NodeList nodeList = document.getElementsByTagName(property);
+        for ( int i = 0; i < nodeList.getLength() && value == null; i++ ) {
+            Node n = nodeList.item(i);
+            value = n.getTextContent();
+        }
+        get.releaseConnection();
+        return value;
     }
 
     private void shutdown() {
