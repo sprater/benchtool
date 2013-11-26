@@ -34,6 +34,7 @@ import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.hp.hpl.jena.rdf.model.NodeIterator;
 import com.hp.hpl.jena.rdf.model.Property;
+import com.hp.hpl.jena.rdf.model.Resource;
 
 /**
  * Fedora 4 Benchmarking Tool
@@ -84,6 +85,15 @@ public class BenchToolFC4 {
         }
         get.releaseConnection();
         return pids;
+    }
+    private static Model readProperties(String uri) throws IOException {
+        DefaultHttpClient client = new DefaultHttpClient();
+        HttpGet get = new HttpGet(uri);
+        HttpResponse resp = client.execute(get);
+        Model m = ModelFactory.createDefaultModel();
+        m.read( resp.getEntity().getContent(), null, "TURTLE" );
+        get.releaseConnection();
+        return m;
     }
 
     public static void main(String[] args) {
@@ -225,10 +235,22 @@ public class BenchToolFC4 {
         }
 
         private void readObject() throws Exception {
+            long start = System.currentTimeMillis();
+
+            // read properties
+            String objURI = fedoraUri.toASCIIString() + "/rest/objects/" + pid;
+            Model m = readProperties( objURI );
+            Property created = m.createProperty(
+            "http://fedora.info/definitions/v4/repository#", "created");
+            Resource objRes = m.getResource( objURI );
+            Resource dsRes = m.getResource( objURI + "/DS1" );
+            String objCreated = m.getProperty( objRes, created ).getString();
+            String dsCreated = m.getProperty( dsRes, created ).getString();
+
+            // read datastream content
             HttpGet get =
                     new HttpGet(fedoraUri.toASCIIString() + "/rest/objects/" +
                             pid + "/DS1/fcr:content");
-            long start = System.currentTimeMillis();
             HttpResponse resp = client.execute(get);
             InputStream in = resp.getEntity().getContent();
             byte[] buf = new byte[8192];
