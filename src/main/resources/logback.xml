@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <property name="log.base" value="../logs/coderGenerator" />
+
+  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+    <layout class="ch.qos.logback.classic.PatternLayout">
+      <pattern>%-9(%d{HH:mm:ss}) %-5level %msg%n</pattern>
+    </layout>
+  </appender>
+
+  <logger name="org.fcrepo.bench" level="info" />
+
+  <root level="info">
+    <appender-ref ref="stdout" />
+  </root>
+</configuration>
