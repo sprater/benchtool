@@ -48,6 +48,8 @@ public class BenchTool {
     /* should be used by all the threads */
     static CloseableHttpClient httpClient;
 
+    static UsernamePasswordCredentials userCreds;
+
     enum Action {
         INGEST, READ, UPDATE, DELETE, LIST;
     }
@@ -56,9 +58,9 @@ public class BenchTool {
         FCREPO3, FCREPO4;
     }
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         /* setup the command line options */
-        Options ops = createOptions();
+        final Options ops = createOptions();
 
         /* set the defaults */
         int numBinaries = 1;
@@ -69,9 +71,9 @@ public class BenchTool {
         String logPath = "durations.log";
 
         /* and get the individual settings from the command line */
-        CommandLineParser parser = new BasicParser();
+        final CommandLineParser parser = new BasicParser();
         try {
-            CommandLine cli = parser.parse(ops, args);
+            final CommandLine cli = parser.parse(ops, args);
             if (cli.hasOption("h")) {
                 printUsage(ops);
                 return;
@@ -99,45 +101,48 @@ public class BenchTool {
             final HttpClientBuilder clientBuilder =
                     HttpClients.custom().setRedirectStrategy(
                             new DefaultRedirectStrategy()).setRetryHandler(
-                            new StandardHttpRequestRetryHandler(0, false));
+                                    new StandardHttpRequestRetryHandler(0, false));
             if (cli.hasOption("u")) {
-                BasicCredentialsProvider cred = new BasicCredentialsProvider();
+                final BasicCredentialsProvider cred =
+                        new BasicCredentialsProvider();
+                userCreds =
+                        new UsernamePasswordCredentials(
+                                cli.getOptionValue('u'), cli
+                                        .getOptionValue('p'));
                 cred.setCredentials(new AuthScope(fedoraUri.getHost(),
-                        fedoraUri.getPort()), new UsernamePasswordCredentials(
-                        cli.getOptionValue('u'), cli.getOptionValue('p')));
+                        fedoraUri.getPort()), userCreds);
                 clientBuilder.setDefaultCredentialsProvider(cred);
-
             }
             httpClient = clientBuilder.build();
 
-        } catch (ParseException e) {
+        } catch (final ParseException e) {
             LOG.error("Unable to parse command line", e);
         }
 
         try {
             /* start the benchmark runner with the given parameters */
-            FCRepoBenchRunner runner =
+            final FCRepoBenchRunner runner =
                     new FCRepoBenchRunner(getFedoraVersion(fedoraUri),
                             fedoraUri, action, numBinaries, size, numThreads,
                             logPath);
             runner.runBenchmark();
-        } catch (IOException e) {
+        } catch (final IOException e) {
             LOG.error("Unable to connect to a Fedora instance at {}", fedoraUri);
         }
     }
 
     @SuppressWarnings("static-access")
     private static Options createOptions() {
-        Options ops = new Options();
+        final Options ops = new Options();
         ops.addOption(OptionBuilder
                 .withArgName("fedora-url")
                 .withDescription(
                         "The URL of the Fedora instance. The url must include the context path of the webapp. " +
                         "[default=http://localhost:8080]")
-                .withLongOpt("fedora-url").hasArg().create('f'));
+                        .withLongOpt("fedora-url").hasArg().create('f'));
         ops.addOption(OptionBuilder.withArgName("num-actions").withDescription(
                 "The number of actions performed. [default=1]").withLongOpt(
-                "num-actions").hasArg().create('n'));
+                        "num-actions").hasArg().create('n'));
         ops.addOption(OptionBuilder.withArgName("size").withDescription(
                 "The size of the individual binaries used. [default=1024]")
                 .withLongOpt("size").hasArg().create('s'));
@@ -145,28 +150,28 @@ public class BenchTool {
                 .withArgName("num-threads")
                 .withDescription(
                         "The number of threads used for performing all actions. [default=1]")
-                .withLongOpt("num-threads").hasArg().create('t'));
+                        .withLongOpt("num-threads").hasArg().create('t'));
         ops.addOption(OptionBuilder.withArgName("user").withDescription(
                 "The fedora user name").withLongOpt("user").hasArg()
                 .create('u'));
         ops.addOption(OptionBuilder.withArgName("password").withDescription(
                 "The user's password").withLongOpt("password").hasArg().create(
-                'p'));
+                        'p'));
         ops.addOption(OptionBuilder
                 .withArgName("action")
                 .withDescription(
                         "The action to perform. Can be one of ingest, read, update or delete. [default=ingest]")
-                .withLongOpt("action").hasArg().create('a'));
+                        .withLongOpt("action").hasArg().create('a'));
         ops.addOption(OptionBuilder
                 .withArgName("log")
                 .withDescription(
                         "The log file to which the durations will get written. [default=durations.log]")
-                .withLongOpt("log").hasArg().create('l'));
+                        .withLongOpt("log").hasArg().create('l'));
         ops.addOption("h", "help", false, "print the help screen");
         return ops;
     }
 
-    private static FedoraVersion getFedoraVersion(URI fedoraUri)
+    private static FedoraVersion getFedoraVersion(final URI fedoraUri)
             throws IOException {
         /* try to determine the Fedora Version using a GET */
         final HttpGet get = new HttpGet(fedoraUri);
@@ -181,7 +186,7 @@ public class BenchTool {
          * just check the html response for a characteristic String to determine
          * the fedora version
          */
-        String html = EntityUtils.toString(resp.getEntity());
+        final String html = EntityUtils.toString(resp.getEntity());
         get.releaseConnection();
         if (html.contains("<meta http-equiv=\"refresh\" content=\"0;url=describe\">") &&
                 html.contains("<title>Redirecting...</title>") &&
@@ -202,8 +207,12 @@ public class BenchTool {
         }
     }
 
-    public static void printUsage(Options ops) {
-        HelpFormatter formatter = new HelpFormatter();
+    public static void printUsage(final Options ops) {
+        final HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("BenchTool", ops);
+    }
+
+    public static UsernamePasswordCredentials getUserCredentials() {
+        return userCreds;
     }
 }

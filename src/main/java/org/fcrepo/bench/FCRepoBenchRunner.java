@@ -22,10 +22,6 @@ import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.ibm.icu.text.DecimalFormat;
 
 public class FCRepoBenchRunner {
@@ -56,9 +52,9 @@ public class FCRepoBenchRunner {
 
     private FileOutputStream logOut;
 
-    public FCRepoBenchRunner(FedoraVersion version, URI fedoraUri,
-            Action action, int numBinaries, long size, int numThreads,
-            String logpath) {
+    public FCRepoBenchRunner(final FedoraVersion version, final URI fedoraUri,
+            final Action action, final int numBinaries, final long size, final int numThreads,
+            final String logpath) {
         super();
         this.version = version;
         this.fedoraUri = fedoraUri;
@@ -70,7 +66,7 @@ public class FCRepoBenchRunner {
         this.fedora = FedoraRestClient.createClient(fedoraUri, version);
         try {
             this.logOut = new FileOutputStream(logpath);
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
             this.logOut = null;
             LOG.warn(
                     "Unable to open log file at {}. No log output will be generated",
@@ -79,17 +75,19 @@ public class FCRepoBenchRunner {
     }
 
     private int getClusterSize() {
-        final Model model = ModelFactory.createDefaultModel();
-        model.read(this.fedoraUri + "/rest");
-        StmtIterator it =
-                model.listStatements(
-                        model.createResource(fedoraUri + "/rest/"),
-                        model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"),
-                        (RDFNode) null);
-        if (!it.hasNext()) {
-            return 0;
-        }
-        return Integer.parseInt(it.next().getObject().asLiteral().getString());
+        return 0;
+        // final Model model = ModelFactory.createDefaultModel();
+        // model.read(this.fedoraUri + "/rest");
+        // StmtIterator it =
+        // model.listStatements(
+        // model.createResource(fedoraUri + "/rest/"),
+        // model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"),
+        // (RDFNode) null);
+        // if (!it.hasNext()) {
+        // return 0;
+        // }
+        // return
+        // Integer.parseInt(it.next().getObject().asLiteral().getString());
     }
 
     public void runBenchmark() {
@@ -104,7 +102,7 @@ public class FCRepoBenchRunner {
 
         /* schedule all the action workers for execution */
         final List<Future<BenchToolResult>> futures = new ArrayList<>();
-        for (String pid : pids) {
+        for (final String pid : pids) {
             futures.add(executor.submit(new ActionWorker(action, fedoraUri, pid, size, version)));
         }
 
@@ -137,7 +135,7 @@ public class FCRepoBenchRunner {
     private void logResults() {
         long duration = 0;
         long numBytes = 0;
-        for (BenchToolResult res : results) {
+        for (final BenchToolResult res : results) {
             duration = duration + res.getDuration();
             numBytes = numBytes + res.getSize();
         }
@@ -162,20 +160,20 @@ public class FCRepoBenchRunner {
         }
     }
 
-    private List<BenchToolResult> fetchResults(List<Future<BenchToolResult>> futures) throws InterruptedException, ExecutionException, IOException {
+    private List<BenchToolResult> fetchResults(final List<Future<BenchToolResult>> futures) throws InterruptedException, ExecutionException, IOException {
         int count = 0;
-        for (Future<BenchToolResult> f : futures) {
-                BenchToolResult res = f.get();
-                LOG.debug("{} of {} actions finished", ++count, numBinaries);
-                if (logOut != null) {
-                    logOut.write((res.getDuration() + "\n").getBytes());
-                }
-                results.add(res);
+        for (final Future<BenchToolResult> f : futures) {
+            final BenchToolResult res = f.get();
+            LOG.debug("{} of {} actions finished", ++count, numBinaries);
+            if (logOut != null) {
+                logOut.write((res.getDuration() + "\n").getBytes());
+            }
+            results.add(res);
         }
         return results;
     }
 
-    private void purgeObjects(List<String> pids) {
+    private void purgeObjects(final List<String> pids) {
         LOG.info("purging {} objects and datastreams", numBinaries);
         fedora.purgeObjects(pids,action != Action.DELETE);
     }
