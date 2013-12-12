@@ -6,6 +6,8 @@ package org.fcrepo.bench;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
@@ -85,7 +87,7 @@ public class BenchTool {
                 numBinaries = Integer.parseInt(cli.getOptionValue("n"));
             }
             if (cli.hasOption("s")) {
-                size = Long.parseLong(cli.getOptionValue("s"));
+                size = getSizeFromArgument(cli.getOptionValue("s"));
             }
             if (cli.hasOption("a")) {
                 action = Action.valueOf(cli.getOptionValue("a").toUpperCase());
@@ -126,6 +128,34 @@ public class BenchTool {
         }
     }
 
+    private static long getSizeFromArgument(String optionValue) {
+        Matcher m = Pattern.compile("^(\\d*)([kKmMgGtT]{0,1})$").matcher(optionValue);
+        if (!m.find()) {
+            throw new IllegalArgumentException("Size " + optionValue + " could not be parsed");
+        }
+        final long size = Long.parseLong(m.group(1));
+        if (m.groupCount() == 1) {
+            return size;
+        }
+        final char postfix = m.group(2).charAt(0);
+        switch (postfix) {
+            case 'k':
+            case 'K':
+                return size * 1024l ;
+            case 'm':
+            case 'M':
+                return size * 1024l * 1024l;
+            case 'g':
+            case 'G':
+                return size * 1024l * 1024l * 1024l;
+            case 't':
+            case 'T':
+                return size * 1024l * 1024l * 1024l * 1024l;
+            default:
+                return size;
+        }
+    }
+
     @SuppressWarnings("static-access")
     private static Options createOptions() {
         Options ops = new Options();
@@ -139,7 +169,7 @@ public class BenchTool {
                 "The number of actions performed. [default=1]").withLongOpt(
                 "num-actions").hasArg().create('n'));
         ops.addOption(OptionBuilder.withArgName("size").withDescription(
-                "The size of the individual binaries used. [default=1024]")
+                "The size of the individual binaries used. Sizes with a k,m,g or t postfix will be interpreted as kilo-, mega-, giga- and terabyte [default=1024]")
                 .withLongOpt("size").hasArg().create('s'));
         ops.addOption(OptionBuilder
                 .withArgName("num-threads")
@@ -197,7 +227,7 @@ public class BenchTool {
             LOG.info("Found Fedora 4 at " + fedoraUri);
             return FedoraVersion.FCREPO4;
         } else {
-            throw new IOException("Unabele to determine Fedora version at " +
+            throw new IOException("Unable to determine Fedora version at " +
                     fedoraUri);
         }
     }
@@ -205,5 +235,10 @@ public class BenchTool {
     public static void printUsage(Options ops) {
         HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("BenchTool", ops);
+        System.out.println("\n\nExamples:\n");
+        System.out.println(" * Ingest a single 100mb file:\n   ---------------------------");
+        System.out.println("   java -jar bench-tool.jar -f http://localhost:8080/fcrepo -n 1 -a ingest -s 100m\n");
+        System.out.println(" * Ingest 20 files of 1gb using 5 threads\n   --------------------------------------");
+        System.out.println("   java -jar bench-tool.jar -f http://localhost:8080/fcrepo -n 20 -a ingest -s 1g -t 5\n");
     }
 }

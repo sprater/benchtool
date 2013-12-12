@@ -126,7 +126,7 @@ public class FCRepoBenchRunner {
     private void logParameters() {
         LOG.info(
                 "Running {} {} action(s) against {} with a binary size of {} using {} thread(s)",
-                new Object[] {numBinaries, action.name(), version.name(), size,
+                new Object[] {numBinaries, action.name(), version.name(), convertSize(size),
                         numThreads});
         if (version == FedoraVersion.FCREPO4) {
             LOG.info("The Fedora cluster has {} node(s) before the benchmark",
@@ -188,10 +188,20 @@ public class FCRepoBenchRunner {
         }
         fedora.createObjects(pids);
         if (this.action == Action.UPDATE || this.action == Action.READ || this.action == Action.DELETE) {
-            LOG.info("preparing {} datastreams of size {} for {}", new Object[] {numBinaries, size, action});
+            LOG.info("preparing {} datastreams of size {} for {}", new Object[] {numBinaries, convertSize(size), action});
             // add datastreams in preparation which can be manipulated
             fedora.createDatastreams(pids, size);
         }
         return pids;
+    }
+
+    public static String convertSize(long size) {
+        int unit =  1024;
+        if (size < unit) {
+            return size + " B";
+        }
+        int exp = (int) (Math.log(size) / Math.log(unit));
+        char pre = "KMGTPE".charAt(exp-1);
+        return String.format("%.1f %cB", size / Math.pow(unit, exp), pre);
     }
 }
