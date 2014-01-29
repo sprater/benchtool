@@ -16,6 +16,11 @@ import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
+
 /**
  * @author frank asseg
  *
@@ -118,5 +123,27 @@ public class Fedora4RestClient extends FedoraRestClient {
                     "\nFedora returned " + resp.getStatusLine().getStatusCode());
         }
         return duration;
+    }
+
+    @Override
+    protected int getClusterSize() throws IOException {
+        final HttpGet get = new HttpGet(this.fedoraUri + "/rest/");
+        get.addHeader("Accept","application/rdf+xml");
+        final HttpResponse resp = BenchTool.httpClient.execute(get);
+        final Model model = ModelFactory.createDefaultModel();
+        if (resp.getStatusLine().getStatusCode() != 200) {
+            throw new IOException("Unable to get cluster size from " + get.getURI() + "\nFedora returned: " + resp.getStatusLine().getStatusCode());
+        }
+        model.read(resp.getEntity().getContent(), null);
+        StmtIterator it =
+                model.listStatements(
+                        model.createResource(fedoraUri + "/rest/"),
+                        model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"),
+                        (RDFNode) null);
+        if (!it.hasNext()) {
+            return 0;
+        }
+        return Integer.parseInt(it.next().getObject().asLiteral().getString());
+
     }
 }

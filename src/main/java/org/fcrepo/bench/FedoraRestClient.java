@@ -30,6 +30,7 @@ public abstract class FedoraRestClient {
     protected abstract long createDatastream(String pid, long size) throws IOException;
     protected abstract long retrieveDatastream(String pid) throws IOException;
     protected abstract long updateDatastream(String pid, long size) throws IOException;
+    protected abstract int getClusterSize() throws IOException;
 
     final void purgeObjects(List<String> pids, boolean removeDatastreams) {
         for (String pid : pids) {
@@ -77,4 +78,5 @@ public abstract class FedoraRestClient {
                                 version.name());
         }
     }
+
 }

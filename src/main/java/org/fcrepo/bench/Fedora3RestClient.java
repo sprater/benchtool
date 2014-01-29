@@ -128,4 +128,9 @@ public class Fedora3RestClient extends FedoraRestClient {
         }
         return duration;
     }
+
+    @Override
+    protected int getClusterSize() throws IOException {
+        return 1;
+    }
 }

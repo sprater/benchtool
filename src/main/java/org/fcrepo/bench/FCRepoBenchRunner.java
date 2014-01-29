@@ -22,10 +22,6 @@ import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.ibm.icu.text.DecimalFormat;
 
 public class FCRepoBenchRunner {
@@ -78,21 +74,7 @@ public class FCRepoBenchRunner {
         }
     }
 
-    private int getClusterSize() {
-        final Model model = ModelFactory.createDefaultModel();
-        model.read(this.fedoraUri + "/rest");
-        StmtIterator it =
-                model.listStatements(
-                        model.createResource(fedoraUri + "/rest/"),
-                        model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"),
-                        (RDFNode) null);
-        if (!it.hasNext()) {
-            return 0;
-        }
-        return Integer.parseInt(it.next().getObject().asLiteral().getString());
-    }
-
-    public void runBenchmark() {
+    public void runBenchmark() throws IOException{
         this.logParameters();
         /*
          * first create the required top level objects so their creation won't
@@ -123,18 +105,18 @@ public class FCRepoBenchRunner {
         this.logResults();
     }
 
-    private void logParameters() {
+    private void logParameters() throws IOException {
         LOG.info(
                 "Running {} {} action(s) against {} with a binary size of {} using {} thread(s)",
                 new Object[] {numBinaries, action.name(), version.name(), convertSize(size),
                         numThreads});
         if (version == FedoraVersion.FCREPO4) {
             LOG.info("The Fedora cluster has {} node(s) before the benchmark",
-                    getClusterSize());
+                    this.fedora.getClusterSize());
         }
     }
 
-    private void logResults() {
+    private void logResults() throws IOException {
         long duration = 0;
         long numBytes = 0;
         for (BenchToolResult res : results) {
@@ -149,7 +131,7 @@ public class FCRepoBenchRunner {
                 this.numBinaries, action, duration});
         if (version == FedoraVersion.FCREPO4) {
             LOG.info("The Fedora cluster has {} node(s) after the benchmark",
-                    getClusterSize());
+                    this.fedora.getClusterSize());
         }
         if (numThreads == 1) {
             LOG.info("Throughput was {} MB/sec", FORMAT
