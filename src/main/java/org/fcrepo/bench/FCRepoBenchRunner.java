@@ -168,7 +168,8 @@ public class FCRepoBenchRunner {
         for (int i = 0; i < numBinaries; i++) {
             pids.add(UUID.randomUUID().toString());
         }
-        fedora.createObjects(pids);
+        final long duration = fedora.createObjects(pids);
+        LOG.info("creating {} objects took {} ms", pids.size(), duration);
         if (this.action == Action.UPDATE || this.action == Action.READ || this.action == Action.DELETE) {
             LOG.info("preparing {} datastreams of size {} for {}", new Object[] {numBinaries, convertSize(size), action});
             // add datastreams in preparation which can be manipulated
