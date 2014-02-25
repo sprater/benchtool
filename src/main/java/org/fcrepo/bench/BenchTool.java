@@ -27,6 +27,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.util.EntityUtils;
+import org.fcrepo.bench.TransactionManager.TransactionMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.uncommons.maths.random.XORShiftRNG;
@@ -51,16 +52,16 @@ public class BenchTool {
     static CloseableHttpClient httpClient;
 
     enum Action {
-        INGEST, READ, UPDATE, DELETE, LIST;
+        INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX;
     }
 
     enum FedoraVersion {
         FCREPO3, FCREPO4;
     }
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         /* setup the command line options */
-        Options ops = createOptions();
+        final Options ops = createOptions();
 
         /* set the defaults */
         int numBinaries = 1;
@@ -69,11 +70,15 @@ public class BenchTool {
         Action action = Action.INGEST;
         URI fedoraUri = URI.create("http://localhost:8080");
         String logPath = "durations.log";
+        TransactionMode txMode = TransactionMode.NONE;
+        int parallelTx = 1;
+        int actionsPerTx = 0;
+        boolean preparationAsTx = true;
 
         /* and get the individual settings from the command line */
-        CommandLineParser parser = new BasicParser();
+        final CommandLineParser parser = new BasicParser();
         try {
-            CommandLine cli = parser.parse(ops, args);
+            final CommandLine cli = parser.parse(ops, args);
             if (cli.hasOption("h")) {
                 printUsage(ops);
                 return;
@@ -98,12 +103,24 @@ public class BenchTool {
             if (cli.hasOption("l")) {
                 logPath = cli.getOptionValue("l");
             }
+            if (cli.hasOption("tx")) {
+                txMode = TransactionMode.valueOf(cli.getOptionValue("tx").toUpperCase());
+            }
+            if (cli.hasOption("ta")) {
+                actionsPerTx = Integer.parseInt(cli.getOptionValue("ta"));
+            }
+            if (cli.hasOption("tp")) {
+                parallelTx = Integer.parseInt(cli.getOptionValue("tp"));
+            }
+            if (cli.hasOption("pt")) {
+                preparationAsTx = Boolean.parseBoolean(cli.getOptionValue("pt"));
+            }
             final HttpClientBuilder clientBuilder =
                     HttpClients.custom().setRedirectStrategy(
                             new DefaultRedirectStrategy()).setRetryHandler(
                             new StandardHttpRequestRetryHandler(0, false));
             if (cli.hasOption("u")) {
-                BasicCredentialsProvider cred = new BasicCredentialsProvider();
+                final BasicCredentialsProvider cred = new BasicCredentialsProvider();
                 cred.setCredentials(new AuthScope(fedoraUri.getHost(),
                         fedoraUri.getPort()), new UsernamePasswordCredentials(
                         cli.getOptionValue('u'), cli.getOptionValue('p')));
@@ -112,24 +129,24 @@ public class BenchTool {
             }
             httpClient = clientBuilder.build();
 
-        } catch (ParseException e) {
+        } catch (final ParseException e) {
             LOG.error("Unable to parse command line", e);
         }
 
         try {
             /* start the benchmark runner with the given parameters */
-            FCRepoBenchRunner runner =
+            final FCRepoBenchRunner runner =
                     new FCRepoBenchRunner(getFedoraVersion(fedoraUri),
                             fedoraUri, action, numBinaries, size, numThreads,
-                            logPath);
+                            logPath, txMode, actionsPerTx, parallelTx, preparationAsTx);
             runner.runBenchmark();
-        } catch (IOException e) {
-            LOG.error("Unable to connect to a Fedora instance at {}", fedoraUri);
+        } catch (final IOException e) {
+            LOG.error("Unable to connect to a Fedora instance at {}", fedoraUri, e);
         }
     }
 
-    private static long getSizeFromArgument(String optionValue) {
-        Matcher m = Pattern.compile("^(\\d*)([kKmMgGtT]{0,1})$").matcher(optionValue);
+    private static long getSizeFromArgument(final String optionValue) {
+        final Matcher m = Pattern.compile("^(\\d*)([kKmMgGtT]{0,1})$").matcher(optionValue);
         if (!m.find()) {
             throw new IllegalArgumentException("Size " + optionValue + " could not be parsed");
         }
@@ -158,7 +175,7 @@ public class BenchTool {
 
     @SuppressWarnings("static-access")
     private static Options createOptions() {
-        Options ops = new Options();
+        final Options ops = new Options();
         ops.addOption(OptionBuilder
                 .withArgName("fedora-url")
                 .withDescription(
@@ -192,11 +209,31 @@ public class BenchTool {
                 .withDescription(
                         "The log file to which the durations will get written. [default=durations.log]")
                 .withLongOpt("log").hasArg().create('l'));
+        ops.addOption(OptionBuilder
+                .withArgName("tx-mode")
+                .withDescription(
+                        "The transaction mode, can be one of none, commit or rollback. [default=none]")
+                .withLongOpt("tx-mode").hasArg().create("tx"));
+        ops.addOption(OptionBuilder
+                .withArgName("num-actions-per-tx")
+                .withDescription(
+                        "Maximum number of actions to perform per transaction. Values <= 0 indicate unlimited actions. [default=0]")
+                .withLongOpt("tx-num-actions").hasArg().create("ta"));
+        ops.addOption(OptionBuilder
+                .withArgName("num-parallel-tx")
+                .withDescription(
+                        "Number of transactions to perform simultaneously. [default=1]")
+                .withLongOpt("tx-parallel").hasArg().create("tp"));
+        ops.addOption(OptionBuilder
+                .withArgName("boolean")
+                .withDescription(
+                        "Whether to perform preparation and tear down steps as transactions for supporting Fedora versions. Boolean. [default=true]")
+                .withLongOpt("prep-tx").hasArg().create("pt"));
         ops.addOption("h", "help", false, "print the help screen");
         return ops;
     }
 
-    private static FedoraVersion getFedoraVersion(URI fedoraUri)
+    private static FedoraVersion getFedoraVersion(final URI fedoraUri)
             throws IOException {
         /* try to determine the Fedora Version using a GET */
         final HttpGet get = new HttpGet(fedoraUri);
@@ -211,7 +248,7 @@ public class BenchTool {
          * just check the html response for a characteristic String to determine
          * the fedora version
          */
-        String html = EntityUtils.toString(resp.getEntity());
+        final String html = EntityUtils.toString(resp.getEntity());
         get.releaseConnection();
         if (html.contains("<meta http-equiv=\"refresh\" content=\"0;url=describe\">") &&
                 html.contains("<title>Redirecting...</title>") &&
@@ -232,8 +269,8 @@ public class BenchTool {
         }
     }
 
-    public static void printUsage(Options ops) {
-        HelpFormatter formatter = new HelpFormatter();
+    public static void printUsage(final Options ops) {
+        final HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("BenchTool", ops);
         System.out.println("\n\nExamples:\n");
         System.out.println(" * Ingest a single 100mb file:\n   ---------------------------");

@@ -9,23 +9,48 @@ The url should include the context path of the webapp. For example `http://local
 
 ```
 usage: BenchTool
- -a,--action <action>             The action to perform. Can be one of
-                                  ingest, read, update or delete.
-                                  [default=ingest]
- -f,--fedora-url <fedora-url>     The URL of the Fedora instance. The url
-                                  must include the context path of the
-                                  webapp. [default=http://localhost:8080]
- -h,--help                        print the help screen
- -l,--log <log>                   The log file to which the durations will
-                                  get written. [default=durations.log]
- -n,--num-actions <num-actions>   The number of actions performed.
-                                  [default=1]
- -p,--password <password>         The user's password
- -s,--size <size>                 The size of the individual binaries
-                                  used. [default=1024]
- -t,--num-threads <num-threads>   The number of threads used for
-                                  performing all actions. [default=1]
- -u,--user <user>                 The fedora user name
+ -a,--action <action>                        The action to perform. Can be
+                                             one of ingest, read, update
+                                             or delete. [default=ingest]
+ -f,--fedora-url <fedora-url>                The URL of the Fedora
+                                             instance. The url must
+                                             include the context path of
+                                             the webapp.
+                                             [default=http://localhost:808
+                                             0]
+ -h,--help                                   print the help screen
+ -l,--log <log>                              The log file to which the
+                                             durations will get written.
+                                             [default=durations.log]
+ -n,--num-actions <num-actions>              The number of actions
+                                             performed. [default=1]
+ -p,--password <password>                    The user's password
+ -pt,--prep-tx <boolean>                     Whether to perform
+                                             preparation and tear down
+                                             steps as transactions for
+                                             supporting Fedora versions.
+                                             Boolean. [default=true]
+ -s,--size <size>                            The size of the individual
+                                             binaries used. Sizes with a
+                                             k,m,g or t postfix will be
+                                             interpreted as kilo-, mega-,
+                                             giga- and terabyte
+                                             [default=1024]
+ -t,--num-threads <num-threads>              The number of threads used
+                                             for performing all actions.
+                                             [default=1]
+ -ta,--tx-num-actions <num-actions-per-tx>   Maximum number of actions to
+                                             perform per transaction.
+                                             Values <= 0 indicate
+                                             unlimited actions.
+                                             [default=0]
+ -tp,--tx-parallel <num-parallel-tx>         Number of transactions to
+                                             perform simultaneously.
+                                             [default=1]
+ -tx,--tx-mode <tx-mode>                     The transaction mode, can be
+                                             one of none, commit or
+                                             rollback. [default=none]
+ -u,--user <user>                            The fedora user name
 ```
 
 Fedora 3
