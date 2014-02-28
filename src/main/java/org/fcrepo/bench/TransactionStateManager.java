@@ -20,18 +20,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.fcrepo.bench.BenchTool.Action;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
  * @author bbpennel
  * @date Feb 24, 2014
  */
-public class TransactionManager {
-
-    private static final Logger LOGGER = LoggerFactory
-            .getLogger(TransactionManager.class);
+public class TransactionStateManager {
 
     public static enum TransactionMode {
         NONE, COMMIT, ROLLBACK
@@ -41,7 +36,7 @@ public class TransactionManager {
 
     private final int actionsPerTx;
 
-    private final List<Transaction> transactions;
+    private final List<TransactionState> transactions;
 
     private int nextTxIndex;
 
@@ -51,7 +46,7 @@ public class TransactionManager {
 
     private long commitTime;
 
-    public TransactionManager(final TransactionMode mode, final int actionsPerTx,
+    public TransactionStateManager(final TransactionMode mode, final int actionsPerTx,
             final int parallelTx) throws IOException {
         this.mode = mode;
         this.actionsPerTx = actionsPerTx;
@@ -61,11 +56,11 @@ public class TransactionManager {
         this.transactions = new ArrayList<>(parallelTx);
     }
 
-    public Transaction getTransaction() throws IOException {
-        final Transaction tx;
+    public TransactionState getTransaction() throws IOException {
+        final TransactionState tx;
 
         if (transactions.size() < parallelTx) {
-            tx = new Transaction(this);
+            tx = new TransactionState(actionsPerTx);
             transactions.add(tx);
             return tx;
         }
@@ -84,7 +79,7 @@ public class TransactionManager {
         return tx;
     }
 
-    public List<Transaction> getTransactions() {
+    public List<TransactionState> getTransactions() {
         return transactions;
     }
 

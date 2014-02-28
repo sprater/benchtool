@@ -27,7 +27,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.util.EntityUtils;
-import org.fcrepo.bench.TransactionManager.TransactionMode;
+import org.fcrepo.bench.TransactionStateManager.TransactionMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.uncommons.maths.random.XORShiftRNG;

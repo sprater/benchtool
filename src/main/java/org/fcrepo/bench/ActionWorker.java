@@ -6,7 +6,6 @@ import java.net.URI;
 import java.util.concurrent.Callable;
 
 import org.fcrepo.bench.BenchTool.Action;
-import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +16,7 @@ public class ActionWorker implements Callable<BenchToolResult> {
 
     private final FedoraRestClient fedora;
 
-    private final Transaction tx;
+    private final TransactionState tx;
 
     private final long binarySize;
 
@@ -26,11 +25,10 @@ public class ActionWorker implements Callable<BenchToolResult> {
     private final String pid;
 
     public ActionWorker(final Action action, final URI fedoraUri, final String pid, final long binarySize,
-            final FedoraVersion version, final Transaction tx) {
+            final FedoraRestClient restClient, final TransactionState tx) {
         super();
         this.binarySize = binarySize;
-        this.fedora = FedoraRestClient.createClient(fedoraUri, version);
-        this.fedora.setTransaction(tx);
+        this.fedora = restClient;
         this.action = action;
         this.pid = pid;
         this.tx = tx;
@@ -73,43 +71,43 @@ public class ActionWorker implements Callable<BenchToolResult> {
     }
 
     private BenchToolResult doDelete() throws IOException {
-        final long duration = fedora.deleteDatastream(pid);
+        final long duration = fedora.deleteDatastream(pid, tx);
         return new BenchToolResult(-1f, duration, binarySize);
     }
 
     private BenchToolResult doRead() throws IOException {
-        final long duration = fedora.retrieveDatastream(pid);
+        final long duration = fedora.retrieveDatastream(pid, tx);
         final float tp = binarySize * 1000f / duration;
         return new BenchToolResult(tp, duration, binarySize);
     }
 
     private BenchToolResult doUpdate() throws IOException {
-        final long duration = fedora.updateDatastream(pid,binarySize);
+        final long duration = fedora.updateDatastream(pid, binarySize, tx);
         final float tp = binarySize * 1000f / duration;
         return new BenchToolResult(tp, duration, binarySize);
     }
 
     private BenchToolResult doIngest() throws IOException {
-        final long duration = fedora.createDatastream(pid, binarySize);
+        final long duration = fedora.createDatastream(pid, binarySize, tx);
         final float tp = binarySize * 1000f / duration;
         return new BenchToolResult(tp, duration, binarySize);
     }
 
     private BenchToolResult doCreateTx() throws IOException {
         final long duration = fedora.createTransaction(tx);
-        tx.getTxManager().addToCreateTime(duration);
+        fedora.getTxManager().addToCreateTime(duration);
         return new BenchToolResult(0, duration, 0);
     }
 
     private BenchToolResult doCommitTx() throws IOException {
         final long duration = fedora.commitTransaction(tx);
-        tx.getTxManager().addToCommitTime(duration);
+        fedora.getTxManager().addToCommitTime(duration);
         return new BenchToolResult(0, duration, 0);
     }
 
     private BenchToolResult doRollbackTx() throws IOException {
         final long duration = fedora.rollbackTransaction(tx);
-        tx.getTxManager().addToCommitTime(duration);
+        fedora.getTxManager().addToCommitTime(duration);
         return new BenchToolResult(0, duration, 0);
     }
 }

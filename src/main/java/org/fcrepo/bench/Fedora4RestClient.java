@@ -14,9 +14,9 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.fcrepo.bench.BenchTool.FedoraVersion;
-import org.fcrepo.bench.TransactionManager.TransactionMode;
-import static org.fcrepo.bench.TransactionManager.TransactionMode.COMMIT;
-import static org.fcrepo.bench.TransactionManager.TransactionMode.ROLLBACK;
+import org.fcrepo.bench.TransactionStateManager.TransactionMode;
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.COMMIT;
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.ROLLBACK;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +32,11 @@ public class Fedora4RestClient extends FedoraRestClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(Fedora4RestClient.class);
 
-    public Fedora4RestClient(final URI fedoraUri) {
-        super(fedoraUri, FedoraVersion.FCREPO4);
+    public Fedora4RestClient(final URI fedoraUri, final TransactionStateManager txManager) {
+        super(fedoraUri, FedoraVersion.FCREPO4, txManager);
     }
 
-    private String getFedoraRestUri() {
+    private String getFedoraRestUri(final TransactionState tx) {
         if (tx == null) {
             return this.fedoraUri.toString() + "/rest";
         }
@@ -50,8 +50,8 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long createObject(final String pid) throws IOException {
-        final String objUri = getFedoraRestUri() + "/objects/" + pid;
+    protected long createObject(final String pid, final TransactionState tx) throws IOException {
+        final String objUri = getFedoraRestUri(tx) + "/objects/" + pid;
         final HttpPost post = new HttpPost(objUri);
         final long time = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(post);
@@ -66,8 +66,8 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long createDatastream(final String pid, final long size) throws IOException {
-        final String dsUri = getFedoraRestUri() + "/objects/" + pid + "/ds1/fcr:content";
+    protected long createDatastream(final String pid, final long size, final TransactionState tx) throws IOException {
+        final String dsUri = getFedoraRestUri(tx) + "/objects/" + pid + "/ds1/fcr:content";
         LOG.debug("Creating DS {}", dsUri);
         final HttpPost post = new HttpPost(dsUri);
         post.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
@@ -83,8 +83,8 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long updateDatastream(final String pid, final long size) throws IOException {
-        final String dsUri = getFedoraRestUri() + "/objects/" + pid + "/ds1/fcr:content";
+    protected long updateDatastream(final String pid, final long size, final TransactionState tx) throws IOException {
+        final String dsUri = getFedoraRestUri(tx) + "/objects/" + pid + "/ds1/fcr:content";
         final HttpPut put = new HttpPut(dsUri);
         put.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
         final long start = System.currentTimeMillis();
@@ -99,8 +99,8 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long retrieveDatastream(final String pid) throws IOException {
-        final String dsUri = getFedoraRestUri() + "/objects/" + pid + "/ds1/fcr:content";
+    protected long retrieveDatastream(final String pid, final TransactionState tx) throws IOException {
+        final String dsUri = getFedoraRestUri(tx) + "/objects/" + pid + "/ds1/fcr:content";
         final HttpGet get = new HttpGet(dsUri);
         final long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(get);
@@ -114,8 +114,8 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long deleteObject(final String pid) throws IOException {
-        final HttpDelete delete = new HttpDelete(getFedoraRestUri() + "/objects/" + pid);
+    protected long deleteObject(final String pid, final TransactionState tx) throws IOException {
+        final HttpDelete delete = new HttpDelete(getFedoraRestUri(tx) + "/objects/" + pid);
         final long time = System.currentTimeMillis();
         BenchTool.httpClient.execute(delete);
         final long duration = System.currentTimeMillis() - time;
@@ -124,8 +124,8 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long deleteDatastream(final String pid) throws IOException {
-        final String dsUri = getFedoraRestUri() + "/objects/" + pid + "/ds1";
+    protected long deleteDatastream(final String pid, final TransactionState tx) throws IOException {
+        final String dsUri = getFedoraRestUri(tx) + "/objects/" + pid + "/ds1";
         final HttpDelete delete = new HttpDelete(dsUri);
         final long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(delete);
@@ -160,7 +160,7 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long createTransaction(final Transaction tx) throws IOException {
+    protected long createTransaction(final TransactionState tx) throws IOException {
         final String txUri = this.fedoraUri + "/rest/fcr:tx";
         final HttpPost post = new HttpPost(txUri);
 
@@ -183,16 +183,16 @@ public class Fedora4RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long commitTransaction(final Transaction transaction) throws IOException {
+    protected long commitTransaction(final TransactionState transaction) throws IOException {
         return finishTransaction(transaction, COMMIT);
     }
 
     @Override
-    protected long rollbackTransaction(final Transaction transaction) throws IOException {
+    protected long rollbackTransaction(final TransactionState transaction) throws IOException {
         return finishTransaction(transaction, ROLLBACK);
     }
 
-    private long finishTransaction(final Transaction transaction, final TransactionMode mode) throws IOException {
+    private long finishTransaction(final TransactionState transaction, final TransactionMode mode) throws IOException {
 
         // Wait for all actions assigned to this transaction to complete for multi-threaded runs
         try {

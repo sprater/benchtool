@@ -26,19 +26,19 @@ public class Fedora3RestClient extends FedoraRestClient {
     private static final Logger LOG = LoggerFactory
             .getLogger(Fedora3RestClient.class);
 
-    public Fedora3RestClient(URI fedoraUri) {
-        super(fedoraUri, FedoraVersion.FCREPO3);
+    public Fedora3RestClient(final URI fedoraUri) {
+        super(fedoraUri, FedoraVersion.FCREPO3, null);
     }
 
     @Override
-    protected long createObject(String pid) throws IOException {
-        HttpPost post =
+    protected long createObject(final String pid, final TransactionState tx) throws IOException {
+        final HttpPost post =
                 new HttpPost(this.fedoraUri + "/objects/bt:" + pid +
                         "?format=info:fedora/fedora-system:FOXML-1.1&label=" +
                         pid);
-        long time = System.currentTimeMillis();
-        HttpResponse resp = BenchTool.httpClient.execute(post);
-        long duration = System.currentTimeMillis() - time;
+        final long time = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(post);
+        final long duration = System.currentTimeMillis() - time;
         post.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 201) {
             throw new IOException("Unable to create object at /objects/" + pid +
@@ -48,15 +48,15 @@ public class Fedora3RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long createDatastream(String pid, long size) throws IOException {
-        String dsUri =
+    protected long createDatastream(final String pid, final long size, final TransactionState tx) throws IOException {
+        final String dsUri =
                 this.fedoraUri + "/objects/bt:" + pid +
                         "/datastreams/ds1?versionable=true&controlGroup=M";
-        HttpPost post = new HttpPost(dsUri);
+        final HttpPost post = new HttpPost(dsUri);
         post.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
-        long start = System.currentTimeMillis();
-        HttpResponse resp = BenchTool.httpClient.execute(post);
-        long duration = System.currentTimeMillis() - start;
+        final long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(post);
+        final long duration = System.currentTimeMillis() - start;
         if (resp.getStatusLine().getStatusCode() != 201) {
             throw new IOException("Unable to create datastream at " + dsUri +
                     "\nFedora returned " + resp.getStatusLine().getStatusCode());
@@ -66,15 +66,15 @@ public class Fedora3RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long updateDatastream(String pid, long size) throws IOException {
-        String dsUri =
+    protected long updateDatastream(final String pid, final long size, final TransactionState tx) throws IOException {
+        final String dsUri =
                 this.fedoraUri + "/objects/bt:" + pid +
                         "/datastreams/ds1?versionable=true&controlGroup=M";
-        HttpPut put = new HttpPut(dsUri);
+        final HttpPut put = new HttpPut(dsUri);
         put.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
-        long start = System.currentTimeMillis();
-        HttpResponse resp = BenchTool.httpClient.execute(put);
-        long duration = System.currentTimeMillis() - start;
+        final long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(put);
+        final long duration = System.currentTimeMillis() - start;
         put.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 200) {
             throw new IOException("Unable to update datastream at " + dsUri +
@@ -84,14 +84,14 @@ public class Fedora3RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long retrieveDatastream(String pid) throws IOException {
-        String dsUri =
+    protected long retrieveDatastream(final String pid, final TransactionState tx) throws IOException {
+        final String dsUri =
                 this.fedoraUri + "/objects/bt:" + pid +
                         "/datastreams/ds1/content";
-        HttpGet get = new HttpGet(dsUri);
-        long start = System.currentTimeMillis();
-        HttpResponse resp = BenchTool.httpClient.execute(get);
-        long duration = System.currentTimeMillis() - start;
+        final HttpGet get = new HttpGet(dsUri);
+        final long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(get);
+        final long duration = System.currentTimeMillis() - start;
         EntityUtils.consume(resp.getEntity());
         get.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 200) {
@@ -103,24 +103,24 @@ public class Fedora3RestClient extends FedoraRestClient {
     }
 
     @Override
-    protected long deleteObject(String pid) throws IOException {
-        HttpDelete delete =
+    protected long deleteObject(final String pid, final TransactionState tx) throws IOException {
+        final HttpDelete delete =
                 new HttpDelete(this.fedoraUri + "/objects/bt:" + pid);
-        long time = System.currentTimeMillis();
+        final long time = System.currentTimeMillis();
         BenchTool.httpClient.execute(delete);
-        long duration = System.currentTimeMillis() - time;
+        final long duration = System.currentTimeMillis() - time;
         delete.releaseConnection();
         return duration;
     }
 
     @Override
-    protected long deleteDatastream(String pid) throws IOException {
-        String dsUri =
+    protected long deleteDatastream(final String pid, final TransactionState tx) throws IOException {
+        final String dsUri =
                 this.fedoraUri + "/objects/bt:" + pid + "/datastreams/ds1";
-        HttpDelete delete = new HttpDelete(dsUri);
-        long start = System.currentTimeMillis();
-        HttpResponse resp = BenchTool.httpClient.execute(delete);
-        long duration = System.currentTimeMillis() - start;
+        final HttpDelete delete = new HttpDelete(dsUri);
+        final long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(delete);
+        final long duration = System.currentTimeMillis() - start;
         delete.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 200) {
             throw new IOException("Unable to delete datastream from " + dsUri +

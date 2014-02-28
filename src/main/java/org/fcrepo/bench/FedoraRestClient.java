@@ -13,51 +13,56 @@ public abstract class FedoraRestClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(FedoraRestClient.class);
 
-    private final FedoraVersion version;
+    protected final FedoraVersion version;
 
     protected final URI fedoraUri;
 
-    // The transaction to be used by applicable operations performed by this client
-    protected Transaction tx;
+    protected final TransactionStateManager txManager;
 
-    public FedoraRestClient(final URI fedoraUri, final FedoraVersion version) {
+    public FedoraRestClient(final URI fedoraUri, final FedoraVersion version, final TransactionStateManager txManager) {
         super();
         this.version = version;
         this.fedoraUri = fedoraUri;
+        this.txManager = txManager;
     }
 
-    protected abstract long deleteDatastream(String pid) throws IOException;
+    public FedoraVersion getVersion() {
+        return version;
+    }
 
-    protected abstract long deleteObject(String pid) throws IOException;
+    public TransactionStateManager getTxManager() {
+        return txManager;
+    }
 
-    protected abstract long createObject(String pid) throws IOException;
+    protected abstract long deleteDatastream(String pid, TransactionState tx) throws IOException;
 
-    protected abstract long createDatastream(String pid, long size) throws IOException;
+    protected abstract long deleteObject(String pid, TransactionState tx) throws IOException;
 
-    protected abstract long retrieveDatastream(String pid) throws IOException;
+    protected abstract long createObject(String pid, TransactionState tx) throws IOException;
 
-    protected abstract long updateDatastream(String pid, long size) throws IOException;
+    protected abstract long createDatastream(String pid, long size, TransactionState tx) throws IOException;
+
+    protected abstract long retrieveDatastream(String pid, TransactionState tx) throws IOException;
+
+    protected abstract long updateDatastream(String pid, long size, TransactionState tx) throws IOException;
 
     protected abstract int getClusterSize() throws IOException;
 
-    final void purgeObjects(final List<String> pids, final boolean removeDatastreams) {
+    final void purgeObjects(final List<String> pids, final TransactionState tx) {
         for (final String pid : pids) {
             try {
-                if (removeDatastreams) {
-                    this.deleteDatastream(pid);
-                }
-                this.deleteObject(pid);
+                this.deleteObject(pid, tx);
             } catch (final IOException e) {
                 LOG.error("Unable to purge objects in Fedora", e);
             }
         }
     }
 
-    final long createObjects(final List<String> pids) {
+    final long createObjects(final List<String> pids, final TransactionState tx) {
         long duration = 0;
         for (final String pid : pids) {
             try {
-                duration += this.createObject(pid);
+                duration += this.createObject(pid, tx);
             } catch (final IOException e) {
                 LOG.error("Unable to prepare objects in Fedora", e);
             }
@@ -65,10 +70,10 @@ public abstract class FedoraRestClient {
         return duration;
     }
 
-    public void createDatastreams(final List<String> pids, final long size) {
+    public void createDatastreams(final List<String> pids, final long size, final TransactionState tx) {
         for (final String pid : pids) {
             try {
-                this.createDatastream(pid, size);
+                this.createDatastream(pid, size, tx);
             } catch (final IOException e) {
                 LOG.error("Unable to prepare datastream in Fedora", e);
             }
@@ -83,7 +88,7 @@ public abstract class FedoraRestClient {
      * @return
      * @throws IOException
      */
-    protected long createTransaction(final Transaction tx) throws IOException {
+    protected long createTransaction(final TransactionState tx) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -94,7 +99,7 @@ public abstract class FedoraRestClient {
      * @return
      * @throws IOException
      */
-    protected long commitTransaction(final Transaction transaction) throws IOException {
+    protected long commitTransaction(final TransactionState transaction) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -105,24 +110,17 @@ public abstract class FedoraRestClient {
      * @return
      * @throws IOException
      */
-    protected long rollbackTransaction(final Transaction transaction) throws IOException {
+    protected long rollbackTransaction(final TransactionState transaction) throws IOException {
         throw new UnsupportedOperationException();
     }
 
-    public Transaction getTransaction() {
-        return this.tx;
-    }
-
-    public void setTransaction(final Transaction tx) {
-        this.tx = tx;
-    }
-
-    public static FedoraRestClient createClient(final URI fedoraUri, final FedoraVersion version) {
+    public static FedoraRestClient createClient(final URI fedoraUri, final FedoraVersion version,
+            final TransactionStateManager txManager) {
         switch (version) {
             case FCREPO3:
                 return new Fedora3RestClient(fedoraUri);
             case FCREPO4:
-                return new Fedora4RestClient(fedoraUri);
+                return new Fedora4RestClient(fedoraUri, txManager);
             default:
                 throw new IllegalArgumentException("No client available for Fedora Version" + version.name());
         }

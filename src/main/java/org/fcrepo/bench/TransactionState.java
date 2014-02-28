@@ -30,9 +30,9 @@ import static org.fcrepo.bench.BenchTool.Action.CREATE_TX;
  * @author bbpennel
  * @date Feb 24, 2014
  */
-public class Transaction {
+public class TransactionState {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Transaction.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionState.class);
 
     private String transactionId;
 
@@ -44,15 +44,12 @@ public class Transaction {
 
     private boolean readyForCommit;
 
-    private final TransactionManager txManager;
-
-    public Transaction(final TransactionManager txManager) {
+    public TransactionState(final int actionsPerTx) {
         transactionId = null;
         actionsAssigned = 0;
-        this.txManager = txManager;
         this.actionsCompleted = new AtomicInteger(0);
         readyForCommit = false;
-        maxActions = txManager.getActionsPerTx();
+        maxActions = actionsPerTx;
     }
 
     /**
@@ -67,13 +64,6 @@ public class Transaction {
      */
     public String getTransactionId() {
         return transactionId;
-    }
-
-    /**
-     * @return the txManager
-     */
-    public TransactionManager getTxManager() {
-        return txManager;
     }
 
     public void actionCompleted(final Action action) {
