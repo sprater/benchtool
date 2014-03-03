@@ -1,3 +1,4 @@
+
 package org.fcrepo.bench;
 
 import java.io.IOException;
@@ -10,77 +11,118 @@ import org.slf4j.LoggerFactory;
 
 public abstract class FedoraRestClient {
 
-	private static final Logger LOG = LoggerFactory.getLogger(FedoraRestClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FedoraRestClient.class);
 
-	private final FedoraVersion version;
+    protected final FedoraVersion version;
 
-	protected final URI fedoraUri;
+    protected final URI fedoraUri;
 
-	public FedoraRestClient(URI fedoraUri, FedoraVersion version) {
-		super();
-		this.version = version;
-		this.fedoraUri = fedoraUri;
-	}
+    protected final TransactionStateManager txManager;
 
-	protected abstract long deleteDatastream(String pid) throws IOException;
+    public FedoraRestClient(final URI fedoraUri, final FedoraVersion version, final TransactionStateManager txManager) {
+        super();
+        this.version = version;
+        this.fedoraUri = fedoraUri;
+        this.txManager = txManager;
+    }
 
-	protected abstract long deleteObject(String pid) throws IOException;
+    public FedoraVersion getVersion() {
+        return version;
+    }
 
-	protected abstract long createObject(String pid) throws IOException;
+    public TransactionStateManager getTxManager() {
+        return txManager;
+    }
 
-	protected abstract long createDatastream(String pid, long size) throws IOException;
+    protected abstract long deleteDatastream(String pid, TransactionState tx) throws IOException;
 
-	protected abstract long retrieveDatastream(String pid) throws IOException;
+    protected abstract long deleteObject(String pid, TransactionState tx) throws IOException;
 
-	protected abstract long updateDatastream(String pid, long size) throws IOException;
+    protected abstract long createObject(String pid, TransactionState tx) throws IOException;
 
-	protected abstract int getClusterSize() throws IOException;
+    protected abstract long createDatastream(String pid, long size, TransactionState tx) throws IOException;
 
-	final void purgeObjects(List<String> pids, boolean removeDatastreams) {
-		for (String pid : pids) {
-			try {
-				if (removeDatastreams) {
-					this.deleteDatastream(pid);
-					;
-				}
-				this.deleteObject(pid);
-			} catch (IOException e) {
-				LOG.error("Unable to prepare objects in Fedora", e);
-			}
-		}
-	}
+    protected abstract long retrieveDatastream(String pid, TransactionState tx) throws IOException;
 
-	final long createObjects(List<String> pids) {
-		long duration = 0;
-		for (String pid : pids) {
-			try {
-				duration += this.createObject(pid);
-			} catch (IOException e) {
-				LOG.error("Unable to prepare objects in Fedora", e);
-			}
-		}
-		return duration;
-	}
+    protected abstract long updateDatastream(String pid, long size, TransactionState tx) throws IOException;
 
-	public void createDatastreams(List<String> pids, long size) {
-		for (String pid : pids) {
-			try {
-				this.createDatastream(pid, size);
-			} catch (IOException e) {
-				LOG.error("Unable to prepare datastream in Fedora", e);
-			}
-		}
-	}
+    protected abstract int getClusterSize() throws IOException;
 
-	public static FedoraRestClient createClient(URI fedoraUri, FedoraVersion version) {
-		switch (version) {
-		case FCREPO3:
-			return new Fedora3RestClient(fedoraUri);
-		case FCREPO4:
-			return new Fedora4RestClient(fedoraUri);
-		default:
-			throw new IllegalArgumentException("No client available for Fedora Version" + version.name());
-		}
-	}
+    final void purgeObjects(final List<String> pids, final TransactionState tx) {
+        for (final String pid : pids) {
+            try {
+                this.deleteObject(pid, tx);
+            } catch (final IOException e) {
+                LOG.error("Unable to purge objects in Fedora", e);
+            }
+        }
+    }
 
+    final long createObjects(final List<String> pids, final TransactionState tx) {
+        long duration = 0;
+        for (final String pid : pids) {
+            try {
+                duration += this.createObject(pid, tx);
+            } catch (final IOException e) {
+                LOG.error("Unable to prepare objects in Fedora", e);
+            }
+        }
+        return duration;
+    }
+
+    public void createDatastreams(final List<String> pids, final long size, final TransactionState tx) {
+        for (final String pid : pids) {
+            try {
+                this.createDatastream(pid, size, tx);
+            } catch (final IOException e) {
+                LOG.error("Unable to prepare datastream in Fedora", e);
+            }
+        }
+    }
+
+    /**
+     * Calls the Fedora API to create a new transaction.  The provided Transaction
+     * object is assigned the transaction ID of the newly created transaction.
+     *
+     * @param tx
+     * @return
+     * @throws IOException
+     */
+    protected long createTransaction(final TransactionState tx) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Tells the Fedora API to commit the transaction provided
+     *
+     * @param transaction
+     * @return
+     * @throws IOException
+     */
+    protected long commitTransaction(final TransactionState transaction) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Tells the Fedora API to rollback the provided transaction
+     *
+     * @param transaction
+     * @return
+     * @throws IOException
+     */
+    protected long rollbackTransaction(final TransactionState transaction) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    public static FedoraRestClient createClient(final URI fedoraUri, final FedoraVersion version,
+            final TransactionStateManager txManager) {
+        switch (version) {
+            case FCREPO3:
+                return new Fedora3RestClient(fedoraUri);
+            case FCREPO4:
+                return new Fedora4RestClient(fedoraUri, txManager);
+            default:
+                throw new IllegalArgumentException("No client available for Fedora Version" + version.name());
+        }
+    }
 }

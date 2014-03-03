@@ -19,6 +19,9 @@ import java.util.concurrent.Future;
 
 import org.fcrepo.bench.BenchTool.Action;
 import org.fcrepo.bench.BenchTool.FedoraVersion;
+import org.fcrepo.bench.TransactionStateManager.TransactionMode;
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.ROLLBACK;
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.COMMIT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,13 +51,21 @@ public class FCRepoBenchRunner {
 
     private final ExecutorService executor;
 
+    // Rest client used for startup and teardown operations
     private final FedoraRestClient fedora;
 
     private FileOutputStream logOut;
 
-    public FCRepoBenchRunner(FedoraVersion version, URI fedoraUri,
-            Action action, int numBinaries, long size, int numThreads,
-            String logpath) {
+    private final TransactionStateManager txManager;
+
+    private final TransactionStateManager prepTxManager;
+
+    private long runTime;
+
+    public FCRepoBenchRunner(final FedoraVersion version, final URI fedoraUri,
+            final Action action, final int numBinaries, final long size, final int numThreads,
+            final String logpath, final TransactionMode txMode, final int actionsPerTx, final int parallelTx,
+            final boolean preparationAsTx) throws IOException {
         super();
         this.version = version;
         this.fedoraUri = fedoraUri;
@@ -63,10 +74,30 @@ public class FCRepoBenchRunner {
         this.size = size;
         this.numThreads = numThreads;
         this.executor = Executors.newFixedThreadPool(numThreads);
-        this.fedora = FedoraRestClient.createClient(fedoraUri, version);
+
+        if (txMode == TransactionMode.NONE || version == FedoraVersion.FCREPO3) {
+            if (txMode != TransactionMode.NONE) {
+                LOG.warn("Transactions are not supported by this version of Fedora, transaction settings ignored");
+            }
+            this.txManager = null;
+        } else {
+            this.txManager = new TransactionStateManager(txMode, actionsPerTx, parallelTx);
+            LOG.debug("Transactions enabled in mode " + txMode + " with " + actionsPerTx
+                    + " actions per tx, " + parallelTx + " parallel tx");
+
+        }
+
+        if (preparationAsTx && version != FedoraVersion.FCREPO3) {
+            prepTxManager = new TransactionStateManager(COMMIT, 0, 1);
+        } else {
+            prepTxManager = null;
+        }
+
+        this.fedora = FedoraRestClient.createClient(fedoraUri, version, prepTxManager);
+
         try {
             this.logOut = new FileOutputStream(logpath);
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
             this.logOut = null;
             LOG.warn(
                     "Unable to open log file at {}. No log output will be generated",
@@ -75,6 +106,8 @@ public class FCRepoBenchRunner {
     }
 
     public void runBenchmark() throws IOException{
+        runTime = System.currentTimeMillis();
+
         this.logParameters();
         /*
          * first create the required top level objects so their creation won't
@@ -85,9 +118,11 @@ public class FCRepoBenchRunner {
         LOG.info("scheduling {} actions", numBinaries);
 
         /* schedule all the action workers for execution */
-        final List<Future<BenchToolResult>> futures = new ArrayList<>();
-        for (String pid : pids) {
-            futures.add(executor.submit(new ActionWorker(action, fedoraUri, pid, size, version)));
+        final List<Future<BenchToolResult>> futures;
+        if (txManager == null) {
+            futures = getActionFutures(pids);
+        } else {
+            futures = getTransactionalActionFutures(pids);
         }
 
         /* retrieve the workers' results */
@@ -100,9 +135,61 @@ public class FCRepoBenchRunner {
         }
 
         /* delete all the created objects and datastreams from the repository */
-        this.purgeObjects(pids);
+        if (txManager == null || txManager.getMode() != ROLLBACK) {
+            this.purgeObjects(pids);
+        }
+
+        runTime = System.currentTimeMillis() - runTime;
 
         this.logResults();
+    }
+
+    private List<Future<BenchToolResult>> getActionFutures(final List<String> pids) throws IOException {
+        final List<Future<BenchToolResult>> futures = new ArrayList<>();
+
+        final FedoraRestClient restClient = FedoraRestClient.createClient(fedoraUri, version, txManager);
+
+        for (final String pid : pids) {
+            futures.add(executor.submit(new ActionWorker(action, fedoraUri, pid, size, restClient, null)));
+        }
+
+        return futures;
+    }
+
+    private List<Future<BenchToolResult>> getTransactionalActionFutures(final List<String> pids) throws IOException {
+        final List<Future<BenchToolResult>> futures = new ArrayList<>();
+
+        final FedoraRestClient restClient = FedoraRestClient.createClient(fedoraUri, version, txManager);
+
+        for (final String pid : pids) {
+            final TransactionState tx = txManager.getTransaction();
+
+            // Create the transaction if it has not been initialized yet
+            if (!tx.actionsAssigned()) {
+                LOG.debug("Adding create tx worker");
+                futures.add(executor.submit(new ActionWorker(Action.CREATE_TX, fedoraUri, null, 0, restClient, tx)));
+            }
+            tx.assignAction();
+
+            futures.add(executor.submit(new ActionWorker(action, fedoraUri, pid, size, restClient, tx)));
+
+            // Finalize the transaction if it is complete
+            if (tx.allActionsAssigned()) {
+                futures.add(executor.submit(new ActionWorker(txManager.getFinalizeAction(), fedoraUri, null, 0,
+                        restClient, tx)));
+            }
+        }
+
+        // Finalize any lingering incomplete transactions
+        for (final TransactionState tx : txManager.getTransactions()) {
+            if (!tx.allActionsAssigned()) {
+                tx.setMaxActions(tx.getActionsAssigned());
+                futures.add(executor.submit(new ActionWorker(txManager.getFinalizeAction(), fedoraUri, null, 0,
+                        restClient, tx)));
+            }
+        }
+
+        return futures;
     }
 
     private void logParameters() throws IOException {
@@ -119,7 +206,7 @@ public class FCRepoBenchRunner {
     private void logResults() throws IOException {
         long duration = 0;
         long numBytes = 0;
-        for (BenchToolResult res : results) {
+        for (final BenchToolResult res : results) {
             duration = duration + res.getDuration();
             numBytes = numBytes + res.getSize();
         }
@@ -127,8 +214,10 @@ public class FCRepoBenchRunner {
         throughputPerThread = size * numBinaries * 1000f / (1024f * 1024f * duration);
 
         /* now the bench is finished and the result will be printed out */
-        LOG.info("Completed {} {} action(s) executed in {} ms", new Object[] {
-                this.numBinaries, action, duration});
+        LOG.info("Completed {} {} action(s) executed in {} ms {}",
+                new Object[] { this.numBinaries, action, duration,
+                txManager == null? "" : "(includes tx create/commit)"});
+
         if (version == FedoraVersion.FCREPO4) {
             LOG.info("The Fedora cluster has {} node(s) after the benchmark",
                     this.fedora.getClusterSize());
@@ -142,12 +231,28 @@ public class FCRepoBenchRunner {
             LOG.info("Throughput per thread was {} MB/sec", FORMAT
                     .format(throughputPerThread));
         }
+
+        if (txManager != null) {
+            LOG.info("Time spent creating transactions {}ms", txManager.getCreateTime());
+            LOG.info("Time spent committing transactions {}ms", txManager.getCommitTime());
+            LOG.info("Condensed results:");
+            LOG.info("{} {} {} {} {} {} {} {} {} {} {}", new Object[] {numBinaries, size, numThreads, action, duration, throughputPerThread,
+                    "tx", txManager.getActionsPerTx(), txManager.getParallelTx(), txManager.getCreateTime(),
+                    txManager.getCommitTime()});
+        } else {
+            LOG.info("Condensed results:");
+            LOG.info("{} {} {} {} {} {} {}", new Object[] {numBinaries, size, numThreads, action, duration, throughputPerThread,
+                    "no-tx"});
+        }
+
+        LOG.info("All operations completed in {} ms", runTime);
+
     }
 
-    private List<BenchToolResult> fetchResults(List<Future<BenchToolResult>> futures) throws InterruptedException, ExecutionException, IOException {
+    private List<BenchToolResult> fetchResults(final List<Future<BenchToolResult>> futures) throws InterruptedException, ExecutionException, IOException {
         int count = 0;
-        for (Future<BenchToolResult> f : futures) {
-                BenchToolResult res = f.get();
+        for (final Future<BenchToolResult> f : futures) {
+                final BenchToolResult res = f.get();
                 LOG.debug("{} of {} actions finished", ++count, numBinaries);
                 if (logOut != null) {
                     logOut.write((res.getDuration() + "\n").getBytes());
@@ -157,34 +262,63 @@ public class FCRepoBenchRunner {
         return results;
     }
 
-    private void purgeObjects(List<String> pids) {
+    private void purgeObjects(final List<String> pids) throws IOException {
         LOG.info("purging {} objects and datastreams", numBinaries);
-        fedora.purgeObjects(pids,action != Action.DELETE);
+
+        final TransactionState tx = startPreparationTx();
+
+        fedora.purgeObjects(pids, tx);
+
+        commitPreparationTx(tx);
     }
 
-    private List<String> prepareObjects() {
+    private List<String> prepareObjects() throws IOException {
         final List<String> pids = new ArrayList<>();
         LOG.info("preparing {} objects", numBinaries);
         for (int i = 0; i < numBinaries; i++) {
             pids.add(UUID.randomUUID().toString());
         }
-        final long duration = fedora.createObjects(pids);
+
+        final TransactionState tx = startPreparationTx();
+
+        final long duration = fedora.createObjects(pids, tx);
         LOG.info("creating {} objects took {} ms", pids.size(), duration);
         if (this.action == Action.UPDATE || this.action == Action.READ || this.action == Action.DELETE) {
             LOG.info("preparing {} datastreams of size {} for {}", new Object[] {numBinaries, convertSize(size), action});
             // add datastreams in preparation which can be manipulated
-            fedora.createDatastreams(pids, size);
+            fedora.createDatastreams(pids, size, tx);
         }
+
+        commitPreparationTx(tx);
+
         return pids;
     }
 
-    public static String convertSize(long size) {
-        int unit =  1024;
+    private TransactionState startPreparationTx() throws IOException {
+        if (prepTxManager != null) {
+            final TransactionState tx;
+            tx = prepTxManager.getTransaction();
+            fedora.createTransaction(tx);
+            return tx;
+        }
+        return null;
+    }
+
+    private void commitPreparationTx(final TransactionState tx) throws IOException {
+        if (prepTxManager != null) {
+            tx.setReadyForCommit(true);
+            fedora.commitTransaction(tx);
+            prepTxManager.clearTransactions();
+        }
+    }
+
+    public static String convertSize(final long size) {
+        final int unit =  1024;
         if (size < unit) {
             return size + " B";
         }
-        int exp = (int) (Math.log(size) / Math.log(unit));
-        char pre = "KMGTPE".charAt(exp-1);
+        final int exp = (int) (Math.log(size) / Math.log(unit));
+        final char pre = "KMGTPE".charAt(exp-1);
         return String.format("%.1f %cB", size / Math.pow(unit, exp), pre);
     }
 }

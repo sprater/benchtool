@@ -1,2 +1,6 @@
+.classpath
+.project
+.settings
+durations.log
 target
 ingest.log
