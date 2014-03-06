@@ -58,6 +58,8 @@ public class ActionWorker implements Callable<BenchToolResult> {
                     return doCommitTx();
                 case ROLLBACK_TX:
                     return doRollbackTx();
+                case SPARQL_INSERT:
+                    return doSparqlInsert();
                 default:
                     throw new IllegalArgumentException("The Action " +
                             action.name() +
@@ -68,6 +70,11 @@ public class ActionWorker implements Callable<BenchToolResult> {
                 tx.actionCompleted(this.action);
             }
         }
+    }
+
+    private BenchToolResult doSparqlInsert() throws IOException{
+        final long duration = fedora.sparqlInsert(pid, tx);
+        return new BenchToolResult(-1f, duration, -1);
     }
 
     private BenchToolResult doDelete() throws IOException {

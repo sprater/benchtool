@@ -34,7 +34,6 @@ import org.uncommons.maths.random.XORShiftRNG;
 
 /**
  * @author frank asseg
- *
  */
 public class BenchTool {
 
@@ -52,7 +51,8 @@ public class BenchTool {
     static CloseableHttpClient httpClient;
 
     enum Action {
-        INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX;
+        INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX,
+        SPARQL_INSERT;
     }
 
     enum FedoraVersion {
@@ -105,7 +105,9 @@ public class BenchTool {
                 logPath = cli.getOptionValue("l");
             }
             if (cli.hasOption("tx")) {
-                txMode = TransactionMode.valueOf(cli.getOptionValue("tx").toUpperCase());
+                txMode =
+                        TransactionMode.valueOf(cli.getOptionValue("tx")
+                                .toUpperCase());
             }
             if (cli.hasOption("ta")) {
                 actionsPerTx = Integer.parseInt(cli.getOptionValue("ta"));
@@ -114,7 +116,8 @@ public class BenchTool {
                 parallelTx = Integer.parseInt(cli.getOptionValue("tp"));
             }
             if (cli.hasOption("pt")) {
-                preparationAsTx = Boolean.parseBoolean(cli.getOptionValue("pt"));
+                preparationAsTx =
+                        Boolean.parseBoolean(cli.getOptionValue("pt"));
             }
             if (cli.hasOption('g')) {
                 purge = false;
@@ -124,7 +127,8 @@ public class BenchTool {
                             new DefaultRedirectStrategy()).setRetryHandler(
                             new StandardHttpRequestRetryHandler(0, false));
             if (cli.hasOption("u")) {
-                final BasicCredentialsProvider cred = new BasicCredentialsProvider();
+                final BasicCredentialsProvider cred =
+                        new BasicCredentialsProvider();
                 cred.setCredentials(new AuthScope(fedoraUri.getHost(),
                         fedoraUri.getPort()), new UsernamePasswordCredentials(
                         cli.getOptionValue('u'), cli.getOptionValue('p')));
@@ -146,14 +150,18 @@ public class BenchTool {
                             preparationAsTx, purge);
             runner.runBenchmark();
         } catch (final IOException e) {
-            LOG.error("Unable to connect to a Fedora instance at {}", fedoraUri, e);
+            LOG.error("Unable to connect to a Fedora instance at {}",
+                    fedoraUri, e);
         }
     }
 
     private static long getSizeFromArgument(final String optionValue) {
-        final Matcher m = Pattern.compile("^(\\d*)([kKmMgGtT]{0,1})$").matcher(optionValue);
+        final Matcher m =
+                Pattern.compile("^(\\d*)([kKmMgGtT]{0,1})$").matcher(
+                        optionValue);
         if (!m.find()) {
-            throw new IllegalArgumentException("Size " + optionValue + " could not be parsed");
+            throw new IllegalArgumentException("Size " + optionValue +
+                    " could not be parsed");
         }
         final long size = Long.parseLong(m.group(1));
         if (m.groupCount() == 1) {
@@ -163,7 +171,7 @@ public class BenchTool {
         switch (postfix) {
             case 'k':
             case 'K':
-                return size * 1024l ;
+                return size * 1024l;
             case 'm':
             case 'M':
                 return size * 1024l * 1024l;
@@ -184,14 +192,17 @@ public class BenchTool {
         ops.addOption(OptionBuilder
                 .withArgName("fedora-url")
                 .withDescription(
-                        "The URL of the Fedora instance. The url must include the context path of the webapp. " +
-                        "[default=http://localhost:8080]")
+                        "The URL of the Fedora instance. The url must include the context path of the webapp. "
+                                +
+                                "[default=http://localhost:8080]")
                 .withLongOpt("fedora-url").hasArg().create('f'));
         ops.addOption(OptionBuilder.withArgName("num-actions").withDescription(
                 "The number of actions performed. [default=1]").withLongOpt(
                 "num-actions").hasArg().create('n'));
-        ops.addOption(OptionBuilder.withArgName("size").withDescription(
-                "The size of the individual binaries used. Sizes with a k,m,g or t postfix will be interpreted as kilo-, mega-, giga- and terabyte [default=1024]")
+        ops.addOption(OptionBuilder
+                .withArgName("size")
+                .withDescription(
+                        "The size of the individual binaries used. Sizes with a k,m,g or t postfix will be interpreted as kilo-, mega-, giga- and terabyte [default=1024]")
                 .withLongOpt("size").hasArg().create('s'));
         ops.addOption(OptionBuilder
                 .withArgName("num-threads")
@@ -207,7 +218,7 @@ public class BenchTool {
         ops.addOption(OptionBuilder
                 .withArgName("action")
                 .withDescription(
-                        "The action to perform. Can be one of ingest, read, update or delete. [default=ingest]")
+                        "The action to perform. Can be one of ingest, read, update, delete or sparql_update. [default=ingest]")
                 .withLongOpt("action").hasArg().create('a'));
         ops.addOption(OptionBuilder
                 .withArgName("log")
@@ -282,9 +293,13 @@ public class BenchTool {
         final HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("BenchTool", ops);
         System.out.println("\n\nExamples:\n");
-        System.out.println(" * Ingest a single 100mb file:\n   ---------------------------");
-        System.out.println("   java -jar bench-tool.jar -f http://localhost:8080/fcrepo -n 1 -a ingest -s 100m\n");
-        System.out.println(" * Ingest 20 files of 1gb using 5 threads\n   --------------------------------------");
-        System.out.println("   java -jar bench-tool.jar -f http://localhost:8080/fcrepo -n 20 -a ingest -s 1g -t 5\n");
+        System.out
+                .println(" * Ingest a single 100mb file:\n   ---------------------------");
+        System.out
+                .println("   java -jar bench-tool.jar -f http://localhost:8080/fcrepo -n 1 -a ingest -s 100m\n");
+        System.out
+                .println(" * Ingest 20 files of 1gb using 5 threads\n   --------------------------------------");
+        System.out
+                .println("   java -jar bench-tool.jar -f http://localhost:8080/fcrepo -n 20 -a ingest -s 1g -t 5\n");
     }
 }
