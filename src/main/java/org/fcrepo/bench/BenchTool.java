@@ -74,6 +74,7 @@ public class BenchTool {
         int parallelTx = 1;
         int actionsPerTx = 0;
         boolean preparationAsTx = true;
+        boolean purge = true;
 
         /* and get the individual settings from the command line */
         final CommandLineParser parser = new BasicParser();
@@ -115,6 +116,9 @@ public class BenchTool {
             if (cli.hasOption("pt")) {
                 preparationAsTx = Boolean.parseBoolean(cli.getOptionValue("pt"));
             }
+            if (cli.hasOption('g')) {
+                purge = false;
+            }
             final HttpClientBuilder clientBuilder =
                     HttpClients.custom().setRedirectStrategy(
                             new DefaultRedirectStrategy()).setRetryHandler(
@@ -138,7 +142,8 @@ public class BenchTool {
             final FCRepoBenchRunner runner =
                     new FCRepoBenchRunner(getFedoraVersion(fedoraUri),
                             fedoraUri, action, numBinaries, size, numThreads,
-                            logPath, txMode, actionsPerTx, parallelTx, preparationAsTx);
+                            logPath, txMode, actionsPerTx, parallelTx,
+                            preparationAsTx, purge);
             runner.runBenchmark();
         } catch (final IOException e) {
             LOG.error("Unable to connect to a Fedora instance at {}", fedoraUri, e);
@@ -229,6 +234,10 @@ public class BenchTool {
                 .withDescription(
                         "Whether to perform preparation and tear down steps as transactions for supporting Fedora versions. Boolean. [default=true]")
                 .withLongOpt("prep-tx").hasArg().create("pt"));
+        ops.addOption(OptionBuilder
+                .withDescription("Do not purge the data after the benchmark. (For debugging purposes)")
+                .withLongOpt("no-purge")
+                .create('g'));
         ops.addOption("h", "help", false, "print the help screen");
         return ops;
     }

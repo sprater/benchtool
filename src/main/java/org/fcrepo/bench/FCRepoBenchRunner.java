@@ -4,6 +4,9 @@
 
 package org.fcrepo.bench;
 
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.COMMIT;
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.ROLLBACK;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -20,8 +23,6 @@ import java.util.concurrent.Future;
 import org.fcrepo.bench.BenchTool.Action;
 import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.fcrepo.bench.TransactionStateManager.TransactionMode;
-import static org.fcrepo.bench.TransactionStateManager.TransactionMode.ROLLBACK;
-import static org.fcrepo.bench.TransactionStateManager.TransactionMode.COMMIT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,10 +63,12 @@ public class FCRepoBenchRunner {
 
     private long runTime;
 
+    private final boolean purge;
+
     public FCRepoBenchRunner(final FedoraVersion version, final URI fedoraUri,
             final Action action, final int numBinaries, final long size, final int numThreads,
             final String logpath, final TransactionMode txMode, final int actionsPerTx, final int parallelTx,
-            final boolean preparationAsTx) throws IOException {
+            final boolean preparationAsTx, final boolean purge) throws IOException {
         super();
         this.version = version;
         this.fedoraUri = fedoraUri;
@@ -74,6 +77,7 @@ public class FCRepoBenchRunner {
         this.size = size;
         this.numThreads = numThreads;
         this.executor = Executors.newFixedThreadPool(numThreads);
+        this.purge = purge;
 
         if (txMode == TransactionMode.NONE || version == FedoraVersion.FCREPO3) {
             if (txMode != TransactionMode.NONE) {
@@ -135,8 +139,10 @@ public class FCRepoBenchRunner {
         }
 
         /* delete all the created objects and datastreams from the repository */
-        if (txManager == null || txManager.getMode() != ROLLBACK) {
-            this.purgeObjects(pids);
+        if (purge) {
+            if (txManager == null || txManager.getMode() != ROLLBACK) {
+                this.purgeObjects(pids);
+            }
         }
 
         runTime = System.currentTimeMillis() - runTime;
