@@ -59,6 +59,17 @@ public abstract class FedoraRestClient {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Calls Fedora's SPARQL endpoint in order to execute an SELECT query
+     * @param pid the pid of the object's sparql record
+     * @param tx the Transaction to use if any
+     * @return the time required to execute the query
+     */
+    protected long sparqlSelect(String pid, TransactionState tx)
+            throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     final void purgeObjects(final List<String> pids, final TransactionState tx) {
         for (final String pid : pids) {
             try {

@@ -294,6 +294,12 @@ public class FCRepoBenchRunner {
             // add datastreams in preparation which can be manipulated
             fedora.createDatastreams(pids, size, tx);
         }
+        if (this.action == Action.SPARQL_SELECT) {
+            LOG.info("preparing {} sparql records for SPARQL_SELECT action", numBinaries);
+            for (String pid: pids) {
+                fedora.sparqlInsert(pid, tx);
+            }
+        }
 
         commitPreparationTx(tx);
 

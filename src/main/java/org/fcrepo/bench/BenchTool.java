@@ -52,7 +52,7 @@ public class BenchTool {
 
     enum Action {
         INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX,
-        SPARQL_INSERT;
+        SPARQL_INSERT, SPARQL_SELECT;
     }
 
     enum FedoraVersion {
@@ -218,7 +218,7 @@ public class BenchTool {
         ops.addOption(OptionBuilder
                 .withArgName("action")
                 .withDescription(
-                        "The action to perform. Can be one of ingest, read, update, delete or sparql_update. [default=ingest]")
+                        "The action to perform. Can be one of ingest, read, update, delete, sparql_select or sparql_insert. [default=ingest]")
                 .withLongOpt("action").hasArg().create('a'));
         ops.addOption(OptionBuilder
                 .withArgName("log")

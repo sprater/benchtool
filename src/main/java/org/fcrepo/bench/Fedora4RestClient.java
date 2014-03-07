@@ -234,15 +234,39 @@ public class Fedora4RestClient extends FedoraRestClient {
     @Override
     protected long sparqlInsert(String pid, TransactionState tx)
             throws IOException {
-        String uri = this.fedoraUri + "/rest/objects/" + pid;
+        String uri = getFedoraRestUri(tx) + "/objects/" + pid;
+        String objectUri = this.fedoraUri + "/rest/objects/" + pid;
         final HttpPost post = new HttpPost(uri);
-        final String query = "INSERT { <" + uri + "> <http://purl.org/dc/elements/1.1/identifier> \"An Identifier\" } WHERE {}";
+        post.addHeader("Content-Type", "application/sparql-update");
+        final String query = "INSERT { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> \"" + pid + "\" } WHERE {}";
         post.setEntity(new StringEntity(query));
         long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(post);
         long duration = System.currentTimeMillis() - start;
         if (resp.getStatusLine().getStatusCode() != 201)  {
             throw new IOException("Failed to update SPARQL with " + pid + "");
+        }
+        post.releaseConnection();
+        return duration;
+    }
+
+    /* (non-Javadoc)
+     * @see org.fcrepo.bench.FedoraRestClient#sparqlSelect(java.lang.String, org.fcrepo.bench.TransactionState)
+     */
+    @Override
+    protected long sparqlSelect(String pid, TransactionState tx)
+            throws IOException {
+        String sparqlUri =this.fedoraUri + "/rest/fcr:sparql";
+        final HttpPost post = new HttpPost(sparqlUri);
+        final String query = "SELECT ?s WHERE {?s <http://purl.org/dc/elements/1.1/title> \"" + pid + "\"}";
+        post.addHeader("Content-Type", "application/sparql-query");
+        post.setEntity(new StringEntity(query));
+        long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(post);
+        long duration = System.currentTimeMillis() - start;
+        if (resp.getStatusLine().getStatusCode() != 200)  {
+            System.out.println(resp.getStatusLine().getStatusCode());
+            throw new IOException("Failed to select SPARQL with " + query);
         }
         post.releaseConnection();
         return duration;
