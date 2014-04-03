@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.fcrepo.bench;
 
 import java.io.IOException;
@@ -20,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.fcrepo.bench.BenchTool.Action;
-
 
 /**
  * @author bbpennel
@@ -46,8 +46,8 @@ public class TransactionStateManager {
 
     private long commitTime;
 
-    public TransactionStateManager(final TransactionMode mode, final int actionsPerTx,
-            final int parallelTx) throws IOException {
+    public TransactionStateManager(final TransactionMode mode, final int actionsPerTx, final int parallelTx)
+            throws IOException {
         this.mode = mode;
         this.actionsPerTx = actionsPerTx;
         this.parallelTx = parallelTx;
@@ -67,8 +67,7 @@ public class TransactionStateManager {
 
         tx = transactions.get(nextTxIndex);
 
-        if (tx.isReadyForCommit()
-                || (actionsPerTx > 0 && tx.getActionsAssigned() == actionsPerTx - 1)) {
+        if (tx.isReadyForCommit() || (actionsPerTx > 0 && tx.getActionsAssigned() == actionsPerTx - 1)) {
             // Transaction is at capacity, remove it from the list of candidates
             transactions.remove(nextTxIndex);
         } else {
@@ -114,7 +113,6 @@ public class TransactionStateManager {
         }
         return Action.ROLLBACK_TX;
     }
-
 
     /**
      * @return the createTime

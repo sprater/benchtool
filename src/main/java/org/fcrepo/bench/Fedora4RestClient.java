@@ -196,7 +196,8 @@ public class Fedora4RestClient extends FedoraRestClient {
 
     private long finishTransaction(final TransactionState transaction, final TransactionMode mode) throws IOException {
 
-        // Wait for all actions assigned to this transaction to complete for multi-threaded runs
+        // Wait for all actions assigned to this transaction to complete for
+        // multi-threaded runs
         try {
             while (!transaction.isReadyForCommit()) {
                 Thread.sleep(5);
@@ -228,35 +229,38 @@ public class Fedora4RestClient extends FedoraRestClient {
         return duration;
     }
 
-    /* (non-Javadoc)
-     * @see org.fcrepo.bench.FedoraRestClient#sparqlUpdate(java.lang.String, org.fcrepo.bench.TransactionState)
+    /*
+     * (non-Javadoc)
+     * @see org.fcrepo.bench.FedoraRestClient#sparqlUpdate(java.lang.String,
+     * org.fcrepo.bench.TransactionState)
      */
     @Override
-    protected long sparqlInsert(String pid, TransactionState tx)
-            throws IOException {
+    protected long sparqlInsert(String pid, TransactionState tx) throws IOException {
         String uri = getFedoraRestUri(tx) + "/objects/" + pid;
         String objectUri = this.fedoraUri + "/rest/objects/" + pid;
         final HttpPost post = new HttpPost(uri);
         post.addHeader("Content-Type", "application/sparql-update");
-        final String query = "INSERT { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> \"" + pid + "\" } WHERE {}";
+        final String query =
+                "INSERT { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> \"" + pid + "\" } WHERE {}";
         post.setEntity(new StringEntity(query));
         long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(post);
         long duration = System.currentTimeMillis() - start;
-        if (resp.getStatusLine().getStatusCode() != 201)  {
+        if (resp.getStatusLine().getStatusCode() != 201) {
             throw new IOException("Failed to update SPARQL with " + pid + "");
         }
         post.releaseConnection();
         return duration;
     }
 
-    /* (non-Javadoc)
-     * @see org.fcrepo.bench.FedoraRestClient#sparqlSelect(java.lang.String, org.fcrepo.bench.TransactionState)
+    /*
+     * (non-Javadoc)
+     * @see org.fcrepo.bench.FedoraRestClient#sparqlSelect(java.lang.String,
+     * org.fcrepo.bench.TransactionState)
      */
     @Override
-    protected long sparqlSelect(String pid, TransactionState tx)
-            throws IOException {
-        String sparqlUri =this.fedoraUri + "/rest/fcr:sparql";
+    protected long sparqlSelect(String pid, TransactionState tx) throws IOException {
+        String sparqlUri = this.fedoraUri + "/rest/fcr:sparql";
         final HttpPost post = new HttpPost(sparqlUri);
         final String query = "SELECT ?s WHERE {?s <http://purl.org/dc/elements/1.1/title> \"" + pid + "\"}";
         post.addHeader("Content-Type", "application/sparql-query");
@@ -264,7 +268,7 @@ public class Fedora4RestClient extends FedoraRestClient {
         long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(post);
         long duration = System.currentTimeMillis() - start;
-        if (resp.getStatusLine().getStatusCode() != 200)  {
+        if (resp.getStatusLine().getStatusCode() != 200) {
             System.out.println(resp.getStatusLine().getStatusCode());
             throw new IOException("Failed to select SPARQL with " + query);
         }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.fcrepo.bench;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import static org.fcrepo.bench.BenchTool.Action.COMMIT_TX;
 import static org.fcrepo.bench.BenchTool.Action.ROLLBACK_TX;
 import static org.fcrepo.bench.BenchTool.Action.CREATE_TX;
-
 
 /**
  * @author bbpennel
@@ -100,8 +100,7 @@ public class TransactionState {
     }
 
     public boolean allActionsAssigned() {
-        return actionsAssigned == maxActions
-                && maxActions > 0;
+        return actionsAssigned == maxActions && maxActions > 0;
     }
 
     public boolean transactionCreated() {
