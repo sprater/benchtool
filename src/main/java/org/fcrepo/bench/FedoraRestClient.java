@@ -48,6 +48,28 @@ public abstract class FedoraRestClient {
 
     protected abstract int getClusterSize() throws IOException;
 
+    /**
+     * Calls Fedora's SPARQL endpoint in order to execute an INSERT query
+     * 
+     * @param pid the pid of the object's sparql record
+     * @param tx the Transaction to use if any
+     * @return the time required to execute the query
+     */
+    protected long sparqlInsert(String pid, TransactionState tx) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Calls Fedora's SPARQL endpoint in order to execute an SELECT query
+     * 
+     * @param pid the pid of the object's sparql record
+     * @param tx the Transaction to use if any
+     * @return the time required to execute the query
+     */
+    protected long sparqlSelect(String pid, TransactionState tx) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
     final void purgeObjects(final List<String> pids, final TransactionState tx) {
         for (final String pid : pids) {
             try {
@@ -81,9 +103,10 @@ public abstract class FedoraRestClient {
     }
 
     /**
-     * Calls the Fedora API to create a new transaction.  The provided Transaction
-     * object is assigned the transaction ID of the newly created transaction.
-     *
+     * Calls the Fedora API to create a new transaction. The provided
+     * Transaction object is assigned the transaction ID of the newly created
+     * transaction.
+     * 
      * @param tx
      * @return
      * @throws IOException
@@ -94,7 +117,7 @@ public abstract class FedoraRestClient {
 
     /**
      * Tells the Fedora API to commit the transaction provided
-     *
+     * 
      * @param transaction
      * @return
      * @throws IOException
@@ -105,7 +128,7 @@ public abstract class FedoraRestClient {
 
     /**
      * Tells the Fedora API to rollback the provided transaction
-     *
+     * 
      * @param transaction
      * @return
      * @throws IOException
@@ -125,4 +148,5 @@ public abstract class FedoraRestClient {
                 throw new IllegalArgumentException("No client available for Fedora Version" + version.name());
         }
     }
+
 }

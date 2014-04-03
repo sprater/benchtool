@@ -11,8 +11,7 @@ import org.slf4j.LoggerFactory;
 
 public class ActionWorker implements Callable<BenchToolResult> {
 
-    private static final Logger LOGGER = LoggerFactory
-            .getLogger(ActionWorker.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ActionWorker.class);
 
     private final FedoraRestClient fedora;
 
@@ -40,7 +39,8 @@ public class ActionWorker implements Callable<BenchToolResult> {
      */
     @Override
     public BenchToolResult call() throws Exception {
-        LOGGER.debug("Executing action {} as part of tx {}", this.action, this.tx == null? "none" : this.tx.getTransactionId());
+        LOGGER.debug("Executing action {} as part of tx {}", this.action, this.tx == null ? "none" : this.tx
+                .getTransactionId());
         try {
             /* check the action and run the appropriate test */
             switch (this.action) {
@@ -58,9 +58,12 @@ public class ActionWorker implements Callable<BenchToolResult> {
                     return doCommitTx();
                 case ROLLBACK_TX:
                     return doRollbackTx();
+                case SPARQL_INSERT:
+                    return doSparqlInsert();
+                case SPARQL_SELECT:
+                    return doSparqlSelect();
                 default:
-                    throw new IllegalArgumentException("The Action " +
-                            action.name() +
+                    throw new IllegalArgumentException("The Action " + action.name() +
                             " is not available in the worker thread");
             }
         } finally {
@@ -68,6 +71,16 @@ public class ActionWorker implements Callable<BenchToolResult> {
                 tx.actionCompleted(this.action);
             }
         }
+    }
+
+    private BenchToolResult doSparqlSelect() throws IOException {
+        final long duration = fedora.sparqlSelect(pid, tx);
+        return new BenchToolResult(-1f, duration, -1);
+    }
+
+    private BenchToolResult doSparqlInsert() throws IOException {
+        final long duration = fedora.sparqlInsert(pid, tx);
+        return new BenchToolResult(-1f, duration, -1);
     }
 
     private BenchToolResult doDelete() throws IOException {

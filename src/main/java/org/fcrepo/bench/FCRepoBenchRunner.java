@@ -32,11 +32,9 @@ public class FCRepoBenchRunner {
 
     private static final DecimalFormat FORMAT = new DecimalFormat("###.##");
 
-    private static final Logger LOG = LoggerFactory
-            .getLogger(FCRepoBenchRunner.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FCRepoBenchRunner.class);
 
-    private final List<BenchToolResult> results = Collections
-            .synchronizedList(new ArrayList<BenchToolResult>());
+    private final List<BenchToolResult> results = Collections.synchronizedList(new ArrayList<BenchToolResult>());
 
     private final FedoraVersion version;
 
@@ -65,10 +63,10 @@ public class FCRepoBenchRunner {
 
     private final boolean purge;
 
-    public FCRepoBenchRunner(final FedoraVersion version, final URI fedoraUri,
-            final Action action, final int numBinaries, final long size, final int numThreads,
-            final String logpath, final TransactionMode txMode, final int actionsPerTx, final int parallelTx,
-            final boolean preparationAsTx, final boolean purge) throws IOException {
+    public FCRepoBenchRunner(final FedoraVersion version, final URI fedoraUri, final Action action,
+            final int numBinaries, final long size, final int numThreads, final String logpath,
+            final TransactionMode txMode, final int actionsPerTx, final int parallelTx, final boolean preparationAsTx,
+            final boolean purge) throws IOException {
         super();
         this.version = version;
         this.fedoraUri = fedoraUri;
@@ -86,8 +84,8 @@ public class FCRepoBenchRunner {
             this.txManager = null;
         } else {
             this.txManager = new TransactionStateManager(txMode, actionsPerTx, parallelTx);
-            LOG.debug("Transactions enabled in mode " + txMode + " with " + actionsPerTx
-                    + " actions per tx, " + parallelTx + " parallel tx");
+            LOG.debug("Transactions enabled in mode " + txMode + " with " + actionsPerTx + " actions per tx, " +
+                    parallelTx + " parallel tx");
 
         }
 
@@ -103,13 +101,11 @@ public class FCRepoBenchRunner {
             this.logOut = new FileOutputStream(logpath);
         } catch (final FileNotFoundException e) {
             this.logOut = null;
-            LOG.warn(
-                    "Unable to open log file at {}. No log output will be generated",
-                    logpath);
+            LOG.warn("Unable to open log file at {}. No log output will be generated", logpath);
         }
     }
 
-    public void runBenchmark() throws IOException{
+    public void runBenchmark() throws IOException {
         runTime = System.currentTimeMillis();
 
         this.logParameters();
@@ -133,8 +129,8 @@ public class FCRepoBenchRunner {
         try {
             this.fetchResults(futures);
         } catch (InterruptedException | ExecutionException | IOException e) {
-            LOG.error("Error while getting results from worker threads",e);
-        }finally{
+            LOG.error("Error while getting results from worker threads", e);
+        } finally {
             this.executor.shutdown();
         }
 
@@ -199,13 +195,10 @@ public class FCRepoBenchRunner {
     }
 
     private void logParameters() throws IOException {
-        LOG.info(
-                "Running {} {} action(s) against {} with a binary size of {} using {} thread(s)",
-                new Object[] {numBinaries, action.name(), version.name(), convertSize(size),
-                        numThreads});
+        LOG.info("Running {} {} action(s) against {} with a binary size of {} using {} thread(s)", new Object[] {
+                numBinaries, action.name(), version.name(), convertSize(size), numThreads});
         if (version == FedoraVersion.FCREPO4) {
-            LOG.info("The Fedora cluster has {} node(s) before the benchmark",
-                    this.fedora.getClusterSize());
+            LOG.info("The Fedora cluster has {} node(s) before the benchmark", this.fedora.getClusterSize());
         }
     }
 
@@ -220,50 +213,46 @@ public class FCRepoBenchRunner {
         throughputPerThread = size * numBinaries * 1000f / (1024f * 1024f * duration);
 
         /* now the bench is finished and the result will be printed out */
-        LOG.info("Completed {} {} action(s) executed in {} ms {}",
-                new Object[] { this.numBinaries, action, duration,
-                txManager == null? "" : "(includes tx create/commit)"});
+        LOG.info("Completed {} {} action(s) executed in {} ms {}", new Object[] {this.numBinaries, action, duration,
+                txManager == null ? "" : "(includes tx create/commit)"});
 
         if (version == FedoraVersion.FCREPO4) {
-            LOG.info("The Fedora cluster has {} node(s) after the benchmark",
-                    this.fedora.getClusterSize());
+            LOG.info("The Fedora cluster has {} node(s) after the benchmark", this.fedora.getClusterSize());
         }
         if (numThreads == 1) {
-            LOG.info("Throughput was {} MB/sec", FORMAT
-                    .format(throughputPerThread));
+            LOG.info("Throughput was {} MB/sec", FORMAT.format(throughputPerThread));
         } else {
-            LOG.info("Throughput was {} MB/sec", FORMAT
-                    .format(throughputPerThread * numThreads));
-            LOG.info("Throughput per thread was {} MB/sec", FORMAT
-                    .format(throughputPerThread));
+            LOG.info("Throughput was {} MB/sec", FORMAT.format(throughputPerThread * numThreads));
+            LOG.info("Throughput per thread was {} MB/sec", FORMAT.format(throughputPerThread));
         }
 
         if (txManager != null) {
             LOG.info("Time spent creating transactions {}ms", txManager.getCreateTime());
             LOG.info("Time spent committing transactions {}ms", txManager.getCommitTime());
             LOG.info("Condensed results:");
-            LOG.info("{} {} {} {} {} {} {} {} {} {} {}", new Object[] {numBinaries, size, numThreads, action, duration, throughputPerThread,
-                    "tx", txManager.getActionsPerTx(), txManager.getParallelTx(), txManager.getCreateTime(),
-                    txManager.getCommitTime()});
+            LOG.info("{} {} {} {} {} {} {} {} {} {} {}", new Object[] {numBinaries, size, numThreads, action, duration,
+                    throughputPerThread, "tx", txManager.getActionsPerTx(), txManager.getParallelTx(),
+                    txManager.getCreateTime(), txManager.getCommitTime()});
         } else {
             LOG.info("Condensed results:");
-            LOG.info("{} {} {} {} {} {} {}", new Object[] {numBinaries, size, numThreads, action, duration, throughputPerThread,
-                    "no-tx"});
+            LOG.info("{} {} {} {} {} {} {}", new Object[] {numBinaries, size, numThreads, action, duration,
+                    throughputPerThread, "no-tx"});
         }
 
         LOG.info("All operations completed in {} ms", runTime);
 
     }
 
-    private List<BenchToolResult> fetchResults(final List<Future<BenchToolResult>> futures) throws InterruptedException, ExecutionException, IOException {
+    private List<BenchToolResult> fetchResults(final List<Future<BenchToolResult>> futures)
+            throws InterruptedException, ExecutionException, IOException {
         int count = 0;
         for (final Future<BenchToolResult> f : futures) {
-                final BenchToolResult res = f.get();
-                LOG.debug("{} of {} actions finished", ++count, numBinaries);
-                if (logOut != null) {
-                    logOut.write((res.getDuration() + "\n").getBytes());
-                }
-                results.add(res);
+            final BenchToolResult res = f.get();
+            LOG.debug("{} of {} actions finished", ++count, numBinaries);
+            if (logOut != null) {
+                logOut.write((res.getDuration() + "\n").getBytes());
+            }
+            results.add(res);
         }
         return results;
     }
@@ -290,9 +279,16 @@ public class FCRepoBenchRunner {
         final long duration = fedora.createObjects(pids, tx);
         LOG.info("creating {} objects took {} ms", pids.size(), duration);
         if (this.action == Action.UPDATE || this.action == Action.READ || this.action == Action.DELETE) {
-            LOG.info("preparing {} datastreams of size {} for {}", new Object[] {numBinaries, convertSize(size), action});
+            LOG.info("preparing {} datastreams of size {} for {}",
+                    new Object[] {numBinaries, convertSize(size), action});
             // add datastreams in preparation which can be manipulated
             fedora.createDatastreams(pids, size, tx);
+        }
+        if (this.action == Action.SPARQL_SELECT) {
+            LOG.info("preparing {} sparql records for SPARQL_SELECT action", numBinaries);
+            for (String pid : pids) {
+                fedora.sparqlInsert(pid, tx);
+            }
         }
 
         commitPreparationTx(tx);
@@ -319,12 +315,12 @@ public class FCRepoBenchRunner {
     }
 
     public static String convertSize(final long size) {
-        final int unit =  1024;
+        final int unit = 1024;
         if (size < unit) {
             return size + " B";
         }
         final int exp = (int) (Math.log(size) / Math.log(unit));
-        final char pre = "KMGTPE".charAt(exp-1);
+        final char pre = "KMGTPE".charAt(exp - 1);
         return String.format("%.1f %cB", size / Math.pow(unit, exp), pre);
     }
 }

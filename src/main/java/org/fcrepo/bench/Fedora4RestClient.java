@@ -4,6 +4,9 @@
 
 package org.fcrepo.bench;
 
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.COMMIT;
+import static org.fcrepo.bench.TransactionStateManager.TransactionMode.ROLLBACK;
+
 import java.io.IOException;
 import java.net.URI;
 
@@ -13,10 +16,9 @@ import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.StringEntity;
 import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.fcrepo.bench.TransactionStateManager.TransactionMode;
-import static org.fcrepo.bench.TransactionStateManager.TransactionMode.COMMIT;
-import static org.fcrepo.bench.TransactionStateManager.TransactionMode.ROLLBACK;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,7 +196,8 @@ public class Fedora4RestClient extends FedoraRestClient {
 
     private long finishTransaction(final TransactionState transaction, final TransactionMode mode) throws IOException {
 
-        // Wait for all actions assigned to this transaction to complete for multi-threaded runs
+        // Wait for all actions assigned to this transaction to complete for
+        // multi-threaded runs
         try {
             while (!transaction.isReadyForCommit()) {
                 Thread.sleep(5);
@@ -225,4 +228,52 @@ public class Fedora4RestClient extends FedoraRestClient {
 
         return duration;
     }
+
+    /*
+     * (non-Javadoc)
+     * @see org.fcrepo.bench.FedoraRestClient#sparqlUpdate(java.lang.String,
+     * org.fcrepo.bench.TransactionState)
+     */
+    @Override
+    protected long sparqlInsert(String pid, TransactionState tx) throws IOException {
+        String uri = getFedoraRestUri(tx) + "/objects/" + pid;
+        String objectUri = this.fedoraUri + "/rest/objects/" + pid;
+        final HttpPost post = new HttpPost(uri);
+        post.addHeader("Content-Type", "application/sparql-update");
+        final String query =
+                "INSERT { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> \"" + pid + "\" } WHERE {}";
+        post.setEntity(new StringEntity(query));
+        long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(post);
+        long duration = System.currentTimeMillis() - start;
+        if (resp.getStatusLine().getStatusCode() != 201) {
+            throw new IOException("Failed to update SPARQL with " + pid + "");
+        }
+        post.releaseConnection();
+        return duration;
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.fcrepo.bench.FedoraRestClient#sparqlSelect(java.lang.String,
+     * org.fcrepo.bench.TransactionState)
+     */
+    @Override
+    protected long sparqlSelect(String pid, TransactionState tx) throws IOException {
+        String sparqlUri = this.fedoraUri + "/rest/fcr:sparql";
+        final HttpPost post = new HttpPost(sparqlUri);
+        final String query = "SELECT ?s WHERE {?s <http://purl.org/dc/elements/1.1/title> \"" + pid + "\"}";
+        post.addHeader("Content-Type", "application/sparql-query");
+        post.setEntity(new StringEntity(query));
+        long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(post);
+        long duration = System.currentTimeMillis() - start;
+        if (resp.getStatusLine().getStatusCode() != 200) {
+            System.out.println(resp.getStatusLine().getStatusCode());
+            throw new IOException("Failed to select SPARQL with " + query);
+        }
+        post.releaseConnection();
+        return duration;
+    }
+
 }

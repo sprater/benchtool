@@ -34,7 +34,6 @@ import org.uncommons.maths.random.XORShiftRNG;
 
 /**
  * @author frank asseg
- *
  */
 public class BenchTool {
 
@@ -52,7 +51,7 @@ public class BenchTool {
     static CloseableHttpClient httpClient;
 
     enum Action {
-        INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX;
+        INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX, SPARQL_INSERT, SPARQL_SELECT;
     }
 
     enum FedoraVersion {
@@ -120,14 +119,12 @@ public class BenchTool {
                 purge = false;
             }
             final HttpClientBuilder clientBuilder =
-                    HttpClients.custom().setRedirectStrategy(
-                            new DefaultRedirectStrategy()).setRetryHandler(
+                    HttpClients.custom().setRedirectStrategy(new DefaultRedirectStrategy()).setRetryHandler(
                             new StandardHttpRequestRetryHandler(0, false));
             if (cli.hasOption("u")) {
                 final BasicCredentialsProvider cred = new BasicCredentialsProvider();
-                cred.setCredentials(new AuthScope(fedoraUri.getHost(),
-                        fedoraUri.getPort()), new UsernamePasswordCredentials(
-                        cli.getOptionValue('u'), cli.getOptionValue('p')));
+                cred.setCredentials(new AuthScope(fedoraUri.getHost(), fedoraUri.getPort()),
+                        new UsernamePasswordCredentials(cli.getOptionValue('u'), cli.getOptionValue('p')));
                 clientBuilder.setDefaultCredentialsProvider(cred);
 
             }
@@ -140,10 +137,8 @@ public class BenchTool {
         try {
             /* start the benchmark runner with the given parameters */
             final FCRepoBenchRunner runner =
-                    new FCRepoBenchRunner(getFedoraVersion(fedoraUri),
-                            fedoraUri, action, numBinaries, size, numThreads,
-                            logPath, txMode, actionsPerTx, parallelTx,
-                            preparationAsTx, purge);
+                    new FCRepoBenchRunner(getFedoraVersion(fedoraUri), fedoraUri, action, numBinaries, size,
+                            numThreads, logPath, txMode, actionsPerTx, parallelTx, preparationAsTx, purge);
             runner.runBenchmark();
         } catch (final IOException e) {
             LOG.error("Unable to connect to a Fedora instance at {}", fedoraUri, e);
@@ -163,7 +158,7 @@ public class BenchTool {
         switch (postfix) {
             case 'k':
             case 'K':
-                return size * 1024l ;
+                return size * 1024l;
             case 'm':
             case 'M':
                 return size * 1024l * 1024l;
@@ -181,76 +176,61 @@ public class BenchTool {
     @SuppressWarnings("static-access")
     private static Options createOptions() {
         final Options ops = new Options();
-        ops.addOption(OptionBuilder
-                .withArgName("fedora-url")
-                .withDescription(
-                        "The URL of the Fedora instance. The url must include the context path of the webapp. " +
-                        "[default=http://localhost:8080]")
-                .withLongOpt("fedora-url").hasArg().create('f'));
+        ops.addOption(OptionBuilder.withArgName("fedora-url").withDescription(
+                "The URL of the Fedora instance. The url must include the context path of the webapp. "
+                        + "[default=http://localhost:8080]").withLongOpt("fedora-url").hasArg().create('f'));
         ops.addOption(OptionBuilder.withArgName("num-actions").withDescription(
-                "The number of actions performed. [default=1]").withLongOpt(
-                "num-actions").hasArg().create('n'));
-        ops.addOption(OptionBuilder.withArgName("size").withDescription(
-                "The size of the individual binaries used. Sizes with a k,m,g or t postfix will be interpreted as kilo-, mega-, giga- and terabyte [default=1024]")
-                .withLongOpt("size").hasArg().create('s'));
+                "The number of actions performed. [default=1]").withLongOpt("num-actions").hasArg().create('n'));
         ops.addOption(OptionBuilder
-                .withArgName("num-threads")
+                .withArgName("size")
                 .withDescription(
-                        "The number of threads used for performing all actions. [default=1]")
-                .withLongOpt("num-threads").hasArg().create('t'));
-        ops.addOption(OptionBuilder.withArgName("user").withDescription(
-                "The fedora user name").withLongOpt("user").hasArg()
-                .create('u'));
-        ops.addOption(OptionBuilder.withArgName("password").withDescription(
-                "The user's password").withLongOpt("password").hasArg().create(
-                'p'));
+                        "The size of the individual binaries used. Sizes with a k,m,g or t postfix will be interpreted as kilo-, mega-, giga- and terabyte [default=1024]")
+                .withLongOpt("size").hasArg().create('s'));
+        ops.addOption(OptionBuilder.withArgName("num-threads").withDescription(
+                "The number of threads used for performing all actions. [default=1]").withLongOpt("num-threads")
+                .hasArg().create('t'));
+        ops.addOption(OptionBuilder.withArgName("user").withDescription("The fedora user name").withLongOpt("user")
+                .hasArg().create('u'));
+        ops.addOption(OptionBuilder.withArgName("password").withDescription("The user's password").withLongOpt(
+                "password").hasArg().create('p'));
         ops.addOption(OptionBuilder
                 .withArgName("action")
                 .withDescription(
-                        "The action to perform. Can be one of ingest, read, update or delete. [default=ingest]")
+                        "The action to perform. Can be one of ingest, read, update, delete, sparql_select or sparql_insert. [default=ingest]")
                 .withLongOpt("action").hasArg().create('a'));
-        ops.addOption(OptionBuilder
-                .withArgName("log")
-                .withDescription(
-                        "The log file to which the durations will get written. [default=durations.log]")
-                .withLongOpt("log").hasArg().create('l'));
-        ops.addOption(OptionBuilder
-                .withArgName("tx-mode")
-                .withDescription(
-                        "The transaction mode, can be one of none, commit or rollback. [default=none]")
-                .withLongOpt("tx-mode").hasArg().create("tx"));
+        ops.addOption(OptionBuilder.withArgName("log").withDescription(
+                "The log file to which the durations will get written. [default=durations.log]").withLongOpt("log")
+                .hasArg().create('l'));
+        ops.addOption(OptionBuilder.withArgName("tx-mode").withDescription(
+                "The transaction mode, can be one of none, commit or rollback. [default=none]").withLongOpt("tx-mode")
+                .hasArg().create("tx"));
         ops.addOption(OptionBuilder
                 .withArgName("num-actions-per-tx")
                 .withDescription(
                         "Maximum number of actions to perform per transaction. Values <= 0 indicate unlimited actions. [default=0]")
                 .withLongOpt("tx-num-actions").hasArg().create("ta"));
-        ops.addOption(OptionBuilder
-                .withArgName("num-parallel-tx")
-                .withDescription(
-                        "Number of transactions to perform simultaneously. [default=1]")
-                .withLongOpt("tx-parallel").hasArg().create("tp"));
+        ops.addOption(OptionBuilder.withArgName("num-parallel-tx").withDescription(
+                "Number of transactions to perform simultaneously. [default=1]").withLongOpt("tx-parallel").hasArg()
+                .create("tp"));
         ops.addOption(OptionBuilder
                 .withArgName("boolean")
                 .withDescription(
                         "Whether to perform preparation and tear down steps as transactions for supporting Fedora versions. Boolean. [default=true]")
                 .withLongOpt("prep-tx").hasArg().create("pt"));
-        ops.addOption(OptionBuilder
-                .withDescription("Do not purge the data after the benchmark. (For debugging purposes)")
-                .withLongOpt("no-purge")
-                .create('g'));
+        ops.addOption(OptionBuilder.withDescription(
+                "Do not purge the data after the benchmark. (For debugging purposes)").withLongOpt("no-purge").create(
+                'g'));
         ops.addOption("h", "help", false, "print the help screen");
         return ops;
     }
 
-    private static FedoraVersion getFedoraVersion(final URI fedoraUri)
-            throws IOException {
+    private static FedoraVersion getFedoraVersion(final URI fedoraUri) throws IOException {
         /* try to determine the Fedora Version using a GET */
         final HttpGet get = new HttpGet(fedoraUri);
         final HttpResponse resp = httpClient.execute(get);
 
         if (resp.getStatusLine().getStatusCode() != 200) {
-            throw new IOException("Unable to find Fedora Server at URI " +
-                    fedoraUri);
+            throw new IOException("Unable to find Fedora Server at URI " + fedoraUri);
         }
 
         /*
@@ -265,16 +245,14 @@ public class BenchTool {
             /* this seems to be a Fedora 3 instance */
             LOG.info("Found Fedora 3 at " + fedoraUri);
             return FedoraVersion.FCREPO3;
-        } else if (html
-                .contains("<title>Fedora Commons Repository 4.0</title>") &&
+        } else if (html.contains("<title>Fedora Commons Repository 4.0</title>") &&
                 html.contains("You probably want to visit something a little more interesting, such as:") &&
                 html.contains("the Fedora REST API endpoint")) {
             /* this seems to be a Fedora 4 instance */
             LOG.info("Found Fedora 4 at " + fedoraUri);
             return FedoraVersion.FCREPO4;
         } else {
-            throw new IOException("Unable to determine Fedora version at " +
-                    fedoraUri);
+            throw new IOException("Unable to determine Fedora version at " + fedoraUri);
         }
     }
 

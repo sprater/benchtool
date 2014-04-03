@@ -6,7 +6,6 @@ package org.fcrepo.bench;
 
 /**
  * @author frank asseg
- *
  */
 public class BenchToolResult {
 
