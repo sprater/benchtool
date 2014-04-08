@@ -86,9 +86,19 @@ Delete 1000 Objects with a single thread
 
 Results
 -------
-The durations file can be easily turned into a graph using gnuplot
+The durations file can be easily turned into a graph using gnuplot.  It supports a variety of output formats.
 
 #### Example
 ```
+gnuplot> set term svg
+gnuplot> set output "durations.svg"
 gnuplot> plot "durations.log" title "Duration" with lines
+gnuplot> exit
+```
+or
+```
+gnuplot> set term png
+gnuplot> set output "durations.png"
+gnuplot> plot "durations.log" title "Duration" with lines
+gnuplot> exit
 ```
