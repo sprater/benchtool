@@ -128,6 +128,8 @@ public class BenchTool {
                 clientBuilder.setDefaultCredentialsProvider(cred);
 
             }
+            clientBuilder.setMaxConnTotal(numThreads);
+            clientBuilder.setMaxConnPerRoute(numThreads);
             httpClient = clientBuilder.build();
 
         } catch (final ParseException e) {
