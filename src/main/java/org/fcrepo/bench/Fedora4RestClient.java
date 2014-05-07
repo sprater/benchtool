@@ -8,14 +8,10 @@ import java.io.IOException;
 import java.net.URI;
 
 import org.apache.http.HttpResponse;
-import org.apache.http.auth.AuthenticationException;
-import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
-import org.apache.http.impl.auth.BasicScheme;
-import org.apache.http.protocol.BasicHttpContext;
 import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,14 +32,7 @@ public class Fedora4RestClient extends FedoraRestClient {
     @Override
     protected long createObject(final String pid) throws IOException {
         final HttpPost post = new HttpPost(this.fedoraUri + "/rest/objects/" + pid);
-        final UsernamePasswordCredentials creds =
-                BenchTool.getUserCredentials();
-        final BasicHttpContext context = new BasicHttpContext();
-        try {
-            post.addHeader(new BasicScheme().authenticate(creds, post, context));
-        } catch (final AuthenticationException ae) {
-            LOG.error(ae.getMessage());
-        }
+        BenchTool.setAuthentication(post);
         final long time = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(post);
         final long duration = System.currentTimeMillis() - time;
@@ -60,14 +49,7 @@ public class Fedora4RestClient extends FedoraRestClient {
         final String dsUri =
                 this.fedoraUri + "/rest/objects/" + pid + "/ds1/fcr:content";
         final HttpPost post = new HttpPost(dsUri);
-        final UsernamePasswordCredentials creds =
-                BenchTool.getUserCredentials();
-        final BasicHttpContext context = new BasicHttpContext();
-        try {
-            post.addHeader(new BasicScheme().authenticate(creds, post, context));
-        } catch (final AuthenticationException ae) {
-            LOG.error(ae.getMessage());
-        }
+        BenchTool.setAuthentication(post);
         post.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
         final long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(post);
@@ -85,14 +67,7 @@ public class Fedora4RestClient extends FedoraRestClient {
         final String dsUri =
                 this.fedoraUri + "/rest/objects/" + pid + "/ds1/fcr:content";
         final HttpPut put = new HttpPut(dsUri);
-        final UsernamePasswordCredentials creds =
-                BenchTool.getUserCredentials();
-        final BasicHttpContext context = new BasicHttpContext();
-        try {
-            put.addHeader(new BasicScheme().authenticate(creds, put, context));
-        } catch (final AuthenticationException ae) {
-            LOG.error(ae.getMessage());
-        }
+        BenchTool.setAuthentication(put);
         put.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
         final long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(put);
@@ -110,14 +85,7 @@ public class Fedora4RestClient extends FedoraRestClient {
         final String dsUri =
                 this.fedoraUri + "/rest/objects/" + pid + "/ds1/fcr:content";
         final HttpGet get = new HttpGet(dsUri);
-        final UsernamePasswordCredentials creds =
-                BenchTool.getUserCredentials();
-        final BasicHttpContext context = new BasicHttpContext();
-        try {
-            get.addHeader(new BasicScheme().authenticate(creds, get, context));
-        } catch (final AuthenticationException ae) {
-            LOG.error(ae.getMessage());
-        }
+        BenchTool.setAuthentication(get);
         final long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(get);
         final long duration = System.currentTimeMillis() - start;
@@ -134,15 +102,7 @@ public class Fedora4RestClient extends FedoraRestClient {
     protected long deleteObject(final String pid) throws IOException {
         final HttpDelete delete =
                 new HttpDelete(this.fedoraUri + "/rest/objects/" + pid);
-        final UsernamePasswordCredentials creds =
-                BenchTool.getUserCredentials();
-        final BasicHttpContext context = new BasicHttpContext();
-        try {
-            delete.addHeader(new BasicScheme().authenticate(creds, delete,
-                    context));
-        } catch (final AuthenticationException ae) {
-            LOG.error(ae.getMessage());
-        }
+        BenchTool.setAuthentication(delete);
         final long time = System.currentTimeMillis();
         BenchTool.httpClient.execute(delete);
         final long duration = System.currentTimeMillis() - time;
@@ -154,15 +114,7 @@ public class Fedora4RestClient extends FedoraRestClient {
     protected long deleteDatastream(final String pid) throws IOException {
         final String dsUri = this.fedoraUri + "/rest/objects/" + pid + "/ds1";
         final HttpDelete delete = new HttpDelete(dsUri);
-        final UsernamePasswordCredentials creds =
-                BenchTool.getUserCredentials();
-        final BasicHttpContext context = new BasicHttpContext();
-        try {
-            delete.addHeader(new BasicScheme().authenticate(creds, delete,
-                    context));
-        } catch (final AuthenticationException ae) {
-            LOG.error(ae.getMessage());
-        }
+        BenchTool.setAuthentication(delete);
         final long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(delete);
         final long duration = System.currentTimeMillis() - start;
@@ -173,4 +125,6 @@ public class Fedora4RestClient extends FedoraRestClient {
         }
         return duration;
     }
+
+
 }

@@ -14,16 +14,18 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
-import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.AuthenticationException;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
+import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,15 +105,10 @@ public class BenchTool {
                             new DefaultRedirectStrategy()).setRetryHandler(
                                     new StandardHttpRequestRetryHandler(0, false));
             if (cli.hasOption("u")) {
-                final BasicCredentialsProvider cred =
-                        new BasicCredentialsProvider();
                 userCreds =
                         new UsernamePasswordCredentials(
                                 cli.getOptionValue('u'), cli
-                                        .getOptionValue('p'));
-                cred.setCredentials(new AuthScope(fedoraUri.getHost(),
-                        fedoraUri.getPort()), userCreds);
-                clientBuilder.setDefaultCredentialsProvider(cred);
+                                .getOptionValue('p'));
             }
             httpClient = clientBuilder.build();
 
@@ -212,7 +209,21 @@ public class BenchTool {
         formatter.printHelp("BenchTool", ops);
     }
 
-    public static UsernamePasswordCredentials getUserCredentials() {
-        return userCreds;
+    protected static void setAuthentication(final HttpRequest request) {
+
+        final BasicHttpContext context = new BasicHttpContext();
+
+        if (userCreds == null) {
+            return;
+        }
+
+        try {
+            request.addHeader(new BasicScheme().authenticate(userCreds,
+                    request, context));
+        } catch (final AuthenticationException ae) {
+            LOG.error(ae.getMessage());
+        }
+
+        return;
     }
 }

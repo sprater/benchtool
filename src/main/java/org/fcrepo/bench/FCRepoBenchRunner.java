@@ -22,6 +22,10 @@ import org.fcrepo.bench.BenchTool.FedoraVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.ibm.icu.text.DecimalFormat;
 
 public class FCRepoBenchRunner {
@@ -75,19 +79,17 @@ public class FCRepoBenchRunner {
     }
 
     private int getClusterSize() {
-        return 0;
-        // final Model model = ModelFactory.createDefaultModel();
-        // model.read(this.fedoraUri + "/rest");
-        // StmtIterator it =
-        // model.listStatements(
-        // model.createResource(fedoraUri + "/rest/"),
-        // model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"),
-        // (RDFNode) null);
-        // if (!it.hasNext()) {
-        // return 0;
-        // }
-        // return
-        // Integer.parseInt(it.next().getObject().asLiteral().getString());
+        final Model model = ModelFactory.createDefaultModel();
+        model.read(this.fedoraUri + "/rest");
+        final StmtIterator it =
+                model.listStatements(
+                        model.createResource(fedoraUri + "/rest/"),
+                        model.createProperty("http://fedora.info/definitions/v4/repository#clusterSize"),
+                        (RDFNode) null);
+        if (!it.hasNext()) {
+            return 0;
+        }
+        return Integer.parseInt(it.next().getObject().asLiteral().getString());
     }
 
     public void runBenchmark() {
