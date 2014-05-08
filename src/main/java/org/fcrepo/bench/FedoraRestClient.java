@@ -55,7 +55,7 @@ public abstract class FedoraRestClient {
      * @param tx the Transaction to use if any
      * @return the time required to execute the query
      */
-    protected long sparqlInsert(String pid, TransactionState tx) throws IOException {
+    protected long sparqlInsert(final String pid, final TransactionState tx) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -66,7 +66,29 @@ public abstract class FedoraRestClient {
      * @param tx the Transaction to use if any
      * @return the time required to execute the query
      */
-    protected long sparqlSelect(String pid, TransactionState tx) throws IOException {
+    protected long sparqlSelect(final String pid, final TransactionState tx) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Calls Fedora's SPARQL endpoint in order to execute a DELETE and INSERT query
+     * 
+     * @param pid the pid of the object's sparql record
+     * @param tx the Transaction to use if any
+     * @return the time required to execute the query
+     */
+    protected long sparqlUpdate(final String pid, final TransactionState tx) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Calls Fedora's SPARQL endpoint in order to execute a DELETE query
+     * 
+     * @param pid the pid of the object's sparql record
+     * @param tx the Transaction to use if any
+     * @return the time required to execute the query
+     */
+    protected long sparqlDelete(final String pid, final TransactionState tx) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -98,6 +120,20 @@ public abstract class FedoraRestClient {
                 this.createDatastream(pid, size, tx);
             } catch (final IOException e) {
                 LOG.error("Unable to prepare datastream in Fedora", e);
+            }
+        }
+    }
+
+    public void createProperties(final List<String> pids, final TransactionState tx) {
+        if (version == FedoraVersion.FCREPO3) {
+            throw new UnsupportedOperationException();
+        }
+
+        for (final String pid : pids) {
+            try {
+                this.sparqlInsert(pid, tx);
+            } catch (final IOException e) {
+                LOG.error("Unable to prepare property in Fedora", e);
             }
         }
     }
@@ -140,13 +176,12 @@ public abstract class FedoraRestClient {
     public static FedoraRestClient createClient(final URI fedoraUri, final FedoraVersion version,
             final TransactionStateManager txManager) {
         switch (version) {
-            case FCREPO3:
-                return new Fedora3RestClient(fedoraUri);
-            case FCREPO4:
-                return new Fedora4RestClient(fedoraUri, txManager);
-            default:
-                throw new IllegalArgumentException("No client available for Fedora Version" + version.name());
+        case FCREPO3:
+            return new Fedora3RestClient(fedoraUri);
+        case FCREPO4:
+            return new Fedora4RestClient(fedoraUri, txManager);
+        default:
+            throw new IllegalArgumentException("No client available for Fedora Version" + version.name());
         }
     }
-
 }

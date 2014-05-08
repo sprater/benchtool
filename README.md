@@ -16,8 +16,7 @@ usage: BenchTool
                                              instance. The url must
                                              include the context path of
                                              the webapp.
-                                             [default=http://localhost:808
-                                             0]
+                                             [default=http://localhost:8080]
  -h,--help                                   print the help screen
  -l,--log <log>                              The log file to which the
                                              durations will get written.
@@ -51,6 +50,13 @@ usage: BenchTool
                                              one of none, commit or
                                              rollback. [default=none]
  -u,--user <user>                            The fedora user name
+ -g,--no-purge <boolean>                     Whether or not to purge the
+                                             created objects after the run.
+                                             [default=true]
+ -p,--property <boolean>                     Perform action ingest, read, 
+                                             update, or delete on a 
+                                             property
+                                             [default=true]
 ```
 
 Fedora 3

@@ -14,6 +14,7 @@ import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
@@ -238,18 +239,18 @@ public class Fedora4RestClient extends FedoraRestClient {
     protected long sparqlInsert(final String pid, final TransactionState tx) throws IOException {
         final String uri = getFedoraRestUri(tx) + "/objects/" + pid;
         final String objectUri = this.fedoraUri + "/rest/objects/" + pid;
-        final HttpPut put = new HttpPut(uri);
-        put.addHeader("Content-Type", "application/sparql-update");
+        final HttpPatch patch = new HttpPatch(uri);
+        patch.addHeader("Content-Type", "application/sparql-update");
         final String query =
                 "INSERT { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> \"" + pid + "\" } WHERE {}";
-        put.setEntity(new StringEntity(query));
+        patch.setEntity(new StringEntity(query));
         final long start = System.currentTimeMillis();
-        final HttpResponse resp = BenchTool.httpClient.execute(put);
+        final HttpResponse resp = BenchTool.httpClient.execute(patch);
         final long duration = System.currentTimeMillis() - start;
-        if (resp.getStatusLine().getStatusCode() != 201) {
-            throw new IOException("Failed to update SPARQL with " + pid + "");
+        if (resp.getStatusLine().getStatusCode() != 204) {
+            throw new IOException("Failed to SPARQL update (INSERT) with " + pid + "");
         }
-        put.releaseConnection();
+        patch.releaseConnection();
         return duration;
     }
 
@@ -261,8 +262,11 @@ public class Fedora4RestClient extends FedoraRestClient {
     @Override
     protected long sparqlSelect(final String pid, final TransactionState tx) throws IOException {
         final String sparqlUri = this.fedoraUri + "/rest/fcr:sparql";
+        final String objectUri = this.fedoraUri + "/rest/objects/" + pid;
         final HttpPost post = new HttpPost(sparqlUri);
-        final String query = "SELECT ?s WHERE {?s <http://purl.org/dc/elements/1.1/title> \"" + pid + "\"}";
+        final String query =
+                "SELECT ?s FROM <" + objectUri + "> WHERE {?s <http://purl.org/dc/elements/1.1/title> \"" + pid +
+                "\"}";
         post.addHeader("Content-Type", "application/sparql-query");
         post.setEntity(new StringEntity(query));
         final long start = System.currentTimeMillis();
@@ -276,4 +280,52 @@ public class Fedora4RestClient extends FedoraRestClient {
         return duration;
     }
 
+    /*
+     * (non-Javadoc)
+     * @see org.fcrepo.bench.FedoraRestClient#sparqlUpdate(java.lang.String, org.fcrepo.bench.TransactionState)
+     */
+    @Override
+    protected long sparqlUpdate(final String pid, final TransactionState tx) throws IOException {
+        final String uri = getFedoraRestUri(tx) + "/objects/" + pid;
+        final String objectUri = this.fedoraUri + "/rest/objects/" + pid;
+        final HttpPatch patch = new HttpPatch(uri);
+        patch.addHeader("Content-Type", "application/sparql-update");
+        final String query =
+                " DELETE { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> ?s }" + " INSERT { <" +
+                        objectUri + "> <http://purl.org/dc/elements/1.1/title> \"" + pid + "-updated\" }" +
+                        " WHERE { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> ?s }";
+        patch.setEntity(new StringEntity(query));
+        final long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(patch);
+        final long duration = System.currentTimeMillis() - start;
+        if (resp.getStatusLine().getStatusCode() != 204) {
+            throw new IOException("Failed SPARQL update (DELETE/INSERT) with " + pid + "");
+        }
+        patch.releaseConnection();
+        return duration;
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.fcrepo.bench.FedoraRestClient#sparqlDelete(java.lang.String, org.fcrepo.bench.TransactionState)
+     */
+    @Override
+    protected long sparqlDelete(final String pid, final TransactionState tx) throws IOException {
+        final String uri = getFedoraRestUri(tx) + "/objects/" + pid;
+        final String objectUri = this.fedoraUri + "/rest/objects/" + pid;
+        final HttpPatch patch = new HttpPatch(uri);
+        patch.addHeader("Content-Type", "application/sparql-update");
+        final String query =
+                " DELETE { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> ?t }" + " WHERE { <" +
+                        objectUri + "> <http://purl.org/dc/elements/1.1/title> ?t }";
+        patch.setEntity(new StringEntity(query));
+        final long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(patch);
+        final long duration = System.currentTimeMillis() - start;
+        if (resp.getStatusLine().getStatusCode() != 204) {
+            throw new IOException("Failed to SPARQL update (DELETE) with " + pid + "");
+        }
+        patch.releaseConnection();
+        return duration;
+    }
 }

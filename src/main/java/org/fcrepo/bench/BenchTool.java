@@ -51,7 +51,8 @@ public class BenchTool {
     static CloseableHttpClient httpClient;
 
     enum Action {
-        INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX, SPARQL_INSERT, SPARQL_SELECT;
+        INGEST, READ, UPDATE, DELETE, LIST, CREATE_TX, COMMIT_TX, ROLLBACK_TX, SPARQL_INSERT, SPARQL_SELECT,
+        CREATE_PROPERTY, READ_PROPERTY, UPDATE_PROPERTY, DELETE_PROPERTY;
     }
 
     enum FedoraVersion {
@@ -74,6 +75,7 @@ public class BenchTool {
         int actionsPerTx = 0;
         boolean preparationAsTx = true;
         boolean purge = true;
+        boolean propertyAction = false;
 
         /* and get the individual settings from the command line */
         final CommandLineParser parser = new BasicParser();
@@ -118,6 +120,9 @@ public class BenchTool {
             if (cli.hasOption('g')) {
                 purge = false;
             }
+            if (cli.hasOption("pp")) {
+                propertyAction = true;
+            }
             final HttpClientBuilder clientBuilder =
                     HttpClients.custom().setRedirectStrategy(new DefaultRedirectStrategy()).setRetryHandler(
                             new StandardHttpRequestRetryHandler(0, false));
@@ -140,7 +145,8 @@ public class BenchTool {
             /* start the benchmark runner with the given parameters */
             final FCRepoBenchRunner runner =
                     new FCRepoBenchRunner(getFedoraVersion(fedoraUri), fedoraUri, action, numBinaries, size,
-                            numThreads, logPath, txMode, actionsPerTx, parallelTx, preparationAsTx, purge);
+                            numThreads, logPath, txMode, actionsPerTx, parallelTx, preparationAsTx, propertyAction,
+                            purge);
             runner.runBenchmark();
         } catch (final IOException e) {
             LOG.error("Unable to connect to a Fedora instance at {}", fedoraUri, e);
@@ -158,20 +164,20 @@ public class BenchTool {
         }
         final char postfix = m.group(2).charAt(0);
         switch (postfix) {
-            case 'k':
-            case 'K':
-                return size * 1024l;
-            case 'm':
-            case 'M':
-                return size * 1024l * 1024l;
-            case 'g':
-            case 'G':
-                return size * 1024l * 1024l * 1024l;
-            case 't':
-            case 'T':
-                return size * 1024l * 1024l * 1024l * 1024l;
-            default:
-                return size;
+        case 'k':
+        case 'K':
+            return size * 1024l;
+        case 'm':
+        case 'M':
+            return size * 1024l * 1024l;
+        case 'g':
+        case 'G':
+            return size * 1024l * 1024l * 1024l;
+        case 't':
+        case 'T':
+            return size * 1024l * 1024l * 1024l * 1024l;
+        default:
+            return size;
         }
     }
 
@@ -187,7 +193,7 @@ public class BenchTool {
                 .withArgName("size")
                 .withDescription(
                         "The size of the individual binaries used. Sizes with a k,m,g or t postfix will be interpreted as kilo-, mega-, giga- and terabyte [default=1024]")
-                .withLongOpt("size").hasArg().create('s'));
+                        .withLongOpt("size").hasArg().create('s'));
         ops.addOption(OptionBuilder.withArgName("num-threads").withDescription(
                 "The number of threads used for performing all actions. [default=1]").withLongOpt("num-threads")
                 .hasArg().create('t'));
@@ -199,7 +205,7 @@ public class BenchTool {
                 .withArgName("action")
                 .withDescription(
                         "The action to perform. Can be one of ingest, read, update, delete, sparql_select or sparql_insert. [default=ingest]")
-                .withLongOpt("action").hasArg().create('a'));
+                        .withLongOpt("action").hasArg().create('a'));
         ops.addOption(OptionBuilder.withArgName("log").withDescription(
                 "The log file to which the durations will get written. [default=durations.log]").withLongOpt("log")
                 .hasArg().create('l'));
@@ -210,7 +216,7 @@ public class BenchTool {
                 .withArgName("num-actions-per-tx")
                 .withDescription(
                         "Maximum number of actions to perform per transaction. Values <= 0 indicate unlimited actions. [default=0]")
-                .withLongOpt("tx-num-actions").hasArg().create("ta"));
+                        .withLongOpt("tx-num-actions").hasArg().create("ta"));
         ops.addOption(OptionBuilder.withArgName("num-parallel-tx").withDescription(
                 "Number of transactions to perform simultaneously. [default=1]").withLongOpt("tx-parallel").hasArg()
                 .create("tp"));
@@ -218,10 +224,12 @@ public class BenchTool {
                 .withArgName("boolean")
                 .withDescription(
                         "Whether to perform preparation and tear down steps as transactions for supporting Fedora versions. Boolean. [default=true]")
-                .withLongOpt("prep-tx").hasArg().create("pt"));
+                        .withLongOpt("prep-tx").hasArg().create("pt"));
+        ops.addOption(OptionBuilder.withDescription("Perform action ingest, read, update, or delete on a property")
+                .withLongOpt("property").create("pp"));
         ops.addOption(OptionBuilder.withDescription(
                 "Do not purge the data after the benchmark. (For debugging purposes)").withLongOpt("no-purge").create(
-                'g'));
+                        'g'));
         ops.addOption("h", "help", false, "print the help screen");
         return ops;
     }
