@@ -54,11 +54,11 @@ public class Fedora4RestClient extends FedoraRestClient {
     @Override
     protected long createObject(final String pid, final TransactionState tx) throws IOException {
         final String objUri = getFedoraRestUri(tx) + "/objects/" + pid;
-        final HttpPost post = new HttpPost(objUri);
+        final HttpPut put = new HttpPut(objUri);
         final long time = System.currentTimeMillis();
-        final HttpResponse resp = BenchTool.httpClient.execute(post);
+        final HttpResponse resp = BenchTool.httpClient.execute(put);
         final long duration = System.currentTimeMillis() - time;
-        post.releaseConnection();
+        put.releaseConnection();
         if (resp.getStatusLine().getStatusCode() != 201) {
             throw new IOException("Unable to create object at /objects/" + pid + "\nFedora returned " +
                     resp.getStatusLine().getStatusCode());
@@ -71,16 +71,16 @@ public class Fedora4RestClient extends FedoraRestClient {
     protected long createDatastream(final String pid, final long size, final TransactionState tx) throws IOException {
         final String dsUri = getFedoraRestUri(tx) + "/objects/" + pid + "/ds1/fcr:content";
         LOG.debug("Creating DS {}", dsUri);
-        final HttpPost post = new HttpPost(dsUri);
-        post.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
+        final HttpPut put = new HttpPut(dsUri);
+        put.setEntity(new BenchToolEntity(size, BenchTool.RANDOM_SLICE));
         final long start = System.currentTimeMillis();
-        final HttpResponse resp = BenchTool.httpClient.execute(post);
+        final HttpResponse resp = BenchTool.httpClient.execute(put);
         final long duration = System.currentTimeMillis() - start;
         if (resp.getStatusLine().getStatusCode() != 201) {
             throw new IOException("Unable to create datastream at " + dsUri + "\nFedora returned " +
                     resp.getStatusLine().getStatusCode());
         }
-        post.releaseConnection();
+        put.releaseConnection();
         return duration;
     }
 
@@ -235,21 +235,21 @@ public class Fedora4RestClient extends FedoraRestClient {
      * org.fcrepo.bench.TransactionState)
      */
     @Override
-    protected long sparqlInsert(String pid, TransactionState tx) throws IOException {
-        String uri = getFedoraRestUri(tx) + "/objects/" + pid;
-        String objectUri = this.fedoraUri + "/rest/objects/" + pid;
-        final HttpPost post = new HttpPost(uri);
-        post.addHeader("Content-Type", "application/sparql-update");
+    protected long sparqlInsert(final String pid, final TransactionState tx) throws IOException {
+        final String uri = getFedoraRestUri(tx) + "/objects/" + pid;
+        final String objectUri = this.fedoraUri + "/rest/objects/" + pid;
+        final HttpPut put = new HttpPut(uri);
+        put.addHeader("Content-Type", "application/sparql-update");
         final String query =
                 "INSERT { <" + objectUri + "> <http://purl.org/dc/elements/1.1/title> \"" + pid + "\" } WHERE {}";
-        post.setEntity(new StringEntity(query));
-        long start = System.currentTimeMillis();
-        final HttpResponse resp = BenchTool.httpClient.execute(post);
-        long duration = System.currentTimeMillis() - start;
+        put.setEntity(new StringEntity(query));
+        final long start = System.currentTimeMillis();
+        final HttpResponse resp = BenchTool.httpClient.execute(put);
+        final long duration = System.currentTimeMillis() - start;
         if (resp.getStatusLine().getStatusCode() != 201) {
             throw new IOException("Failed to update SPARQL with " + pid + "");
         }
-        post.releaseConnection();
+        put.releaseConnection();
         return duration;
     }
 
@@ -259,15 +259,15 @@ public class Fedora4RestClient extends FedoraRestClient {
      * org.fcrepo.bench.TransactionState)
      */
     @Override
-    protected long sparqlSelect(String pid, TransactionState tx) throws IOException {
-        String sparqlUri = this.fedoraUri + "/rest/fcr:sparql";
+    protected long sparqlSelect(final String pid, final TransactionState tx) throws IOException {
+        final String sparqlUri = this.fedoraUri + "/rest/fcr:sparql";
         final HttpPost post = new HttpPost(sparqlUri);
         final String query = "SELECT ?s WHERE {?s <http://purl.org/dc/elements/1.1/title> \"" + pid + "\"}";
         post.addHeader("Content-Type", "application/sparql-query");
         post.setEntity(new StringEntity(query));
-        long start = System.currentTimeMillis();
+        final long start = System.currentTimeMillis();
         final HttpResponse resp = BenchTool.httpClient.execute(post);
-        long duration = System.currentTimeMillis() - start;
+        final long duration = System.currentTimeMillis() - start;
         if (resp.getStatusLine().getStatusCode() != 200) {
             System.out.println(resp.getStatusLine().getStatusCode());
             throw new IOException("Failed to select SPARQL with " + query);
