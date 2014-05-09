@@ -143,7 +143,7 @@ public class FCRepoBenchRunner {
          */
         final List<String> pids = prepareObjects();
 
-        LOG.info("scheduling {} actions", numBinaries);
+        LOG.info("scheduling {} {} actions", numBinaries, this.action.toString());
 
         /* schedule all the action workers for execution */
         final List<Future<BenchToolResult>> futures;
