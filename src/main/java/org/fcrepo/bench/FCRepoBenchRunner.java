@@ -61,6 +61,8 @@ public class FCRepoBenchRunner {
 
     private long runTime;
 
+    private long testTime;
+
     private boolean propertyAction;
 
     private final boolean purge;
@@ -112,7 +114,7 @@ public class FCRepoBenchRunner {
             LOG.warn("Unable to open log file at {}. No log output will be generated", logpath);
         }
 
-        if (propertyAction) {
+        if (this.propertyAction) {
             switch (this.action) {
             case INGEST:
                 this.action = Action.CREATE_PROPERTY;
@@ -146,6 +148,9 @@ public class FCRepoBenchRunner {
         LOG.info("scheduling {} {} actions", numBinaries, this.action.toString());
 
         /* schedule all the action workers for execution */
+        LOG.info("Starting clock now...");
+        testTime = System.currentTimeMillis();
+
         final List<Future<BenchToolResult>> futures;
         if (txManager == null) {
             futures = getActionFutures(pids);
@@ -161,6 +166,11 @@ public class FCRepoBenchRunner {
         } finally {
             this.executor.shutdown();
         }
+
+        testTime = System.currentTimeMillis() - testTime;
+        LOG.info("Stopping clock.");
+        LOG.info("Completed {} {} action(s) executed in {} ms {}", new Object[] { this.numBinaries, action, testTime,
+            txManager == null ? "" : "(includes tx create/commit)" });
 
         /* delete all the created objects and datastreams from the repository */
         if (purge) {
@@ -240,10 +250,6 @@ public class FCRepoBenchRunner {
         float throughputPerThread = 0f;
         throughputPerThread = size * numBinaries * 1000f / (1024f * 1024f * duration);
 
-        /* now the bench is finished and the result will be printed out */
-        LOG.info("Completed {} {} action(s) executed in {} ms {}", new Object[] {this.numBinaries, action, duration,
-                txManager == null ? "" : "(includes tx create/commit)"});
-
         if (version == FedoraVersion.FCREPO4) {
             LOG.info("The Fedora cluster has {} node(s) after the benchmark", this.fedora.getClusterSize());
         }
@@ -263,7 +269,7 @@ public class FCRepoBenchRunner {
                     txManager.getCreateTime(), txManager.getCommitTime()});
         } else {
             LOG.info("Condensed results:");
-            LOG.info("{} {} {} {} {} {} {}", new Object[] {numBinaries, size, numThreads, action, duration,
+            LOG.info("{} {} {} {} {} {} {}", new Object[] { numBinaries, size, numThreads, action, testTime,
                     throughputPerThread, "no-tx"});
         }
 
