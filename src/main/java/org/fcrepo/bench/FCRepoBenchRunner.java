@@ -40,7 +40,7 @@ public class FCRepoBenchRunner {
 
     private final URI fedoraUri;
 
-    private final Action action;
+    private Action action;
 
     private final int numBinaries;
 
@@ -61,12 +61,14 @@ public class FCRepoBenchRunner {
 
     private long runTime;
 
+    private boolean propertyAction;
+
     private final boolean purge;
 
     public FCRepoBenchRunner(final FedoraVersion version, final URI fedoraUri, final Action action,
             final int numBinaries, final long size, final int numThreads, final String logpath,
             final TransactionMode txMode, final int actionsPerTx, final int parallelTx, final boolean preparationAsTx,
-            final boolean purge) throws IOException {
+            final boolean propertyAction, final boolean purge) throws IOException {
         super();
         this.version = version;
         this.fedoraUri = fedoraUri;
@@ -75,6 +77,7 @@ public class FCRepoBenchRunner {
         this.size = size;
         this.numThreads = numThreads;
         this.executor = Executors.newFixedThreadPool(numThreads);
+        this.propertyAction = propertyAction;
         this.purge = purge;
 
         if (txMode == TransactionMode.NONE || version == FedoraVersion.FCREPO3) {
@@ -95,6 +98,11 @@ public class FCRepoBenchRunner {
             prepTxManager = null;
         }
 
+        if (propertyAction && version == FedoraVersion.FCREPO3) {
+            LOG.warn("Actions on propertiesare not supported by this version of Fedora, property action setting ignored");
+            this.propertyAction = false;
+        }
+
         this.fedora = FedoraRestClient.createClient(fedoraUri, version, prepTxManager);
 
         try {
@@ -102,6 +110,26 @@ public class FCRepoBenchRunner {
         } catch (final FileNotFoundException e) {
             this.logOut = null;
             LOG.warn("Unable to open log file at {}. No log output will be generated", logpath);
+        }
+
+        if (propertyAction) {
+            switch (this.action) {
+            case INGEST:
+                this.action = Action.CREATE_PROPERTY;
+                break;
+            case READ:
+                this.action = Action.READ_PROPERTY;
+                break;
+            case UPDATE:
+                this.action = Action.UPDATE_PROPERTY;
+                break;
+            case DELETE:
+                this.action = Action.DELETE_PROPERTY;
+                break;
+            default:
+                LOG.error("Cannot perform action {} on a property.", this.action.toString());
+                break;
+            }
         }
     }
 
@@ -115,7 +143,7 @@ public class FCRepoBenchRunner {
          */
         final List<String> pids = prepareObjects();
 
-        LOG.info("scheduling {} actions", numBinaries);
+        LOG.info("scheduling {} {} actions", numBinaries, this.action.toString());
 
         /* schedule all the action workers for execution */
         final List<Future<BenchToolResult>> futures;
@@ -286,9 +314,16 @@ public class FCRepoBenchRunner {
         }
         if (this.action == Action.SPARQL_SELECT) {
             LOG.info("preparing {} sparql records for SPARQL_SELECT action", numBinaries);
-            for (String pid : pids) {
+            for (final String pid : pids) {
                 fedora.sparqlInsert(pid, tx);
             }
+        }
+
+        if (this.action == Action.UPDATE_PROPERTY || this.action == Action.READ_PROPERTY ||
+                this.action == Action.DELETE_PROPERTY) {
+            LOG.info("preparing {} properties for {}", numBinaries, action);
+            // add properties in preparation which can be manipulated
+            fedora.createProperties(pids, tx);
         }
 
         commitPreparationTx(tx);

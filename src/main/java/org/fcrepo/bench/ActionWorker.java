@@ -44,27 +44,35 @@ public class ActionWorker implements Callable<BenchToolResult> {
         try {
             /* check the action and run the appropriate test */
             switch (this.action) {
-                case INGEST:
-                    return doIngest();
-                case UPDATE:
-                    return doUpdate();
-                case READ:
-                    return doRead();
-                case DELETE:
-                    return doDelete();
-                case CREATE_TX:
-                    return doCreateTx();
-                case COMMIT_TX:
-                    return doCommitTx();
-                case ROLLBACK_TX:
-                    return doRollbackTx();
-                case SPARQL_INSERT:
-                    return doSparqlInsert();
-                case SPARQL_SELECT:
-                    return doSparqlSelect();
-                default:
-                    throw new IllegalArgumentException("The Action " + action.name() +
-                            " is not available in the worker thread");
+            case INGEST:
+                return doIngest();
+            case UPDATE:
+                return doUpdate();
+            case READ:
+                return doRead();
+            case DELETE:
+                return doDelete();
+            case CREATE_TX:
+                return doCreateTx();
+            case COMMIT_TX:
+                return doCommitTx();
+            case ROLLBACK_TX:
+                return doRollbackTx();
+            case SPARQL_INSERT:
+                return doSparqlInsert();
+            case SPARQL_SELECT:
+                return doSparqlSelect();
+            case CREATE_PROPERTY:
+                return doCreateProperty();
+            case READ_PROPERTY:
+                return doReadProperty();
+            case UPDATE_PROPERTY:
+                return doUpdateProperty();
+            case DELETE_PROPERTY:
+                return doDeleteProperty();
+            default:
+                throw new IllegalArgumentException("The Action " + action.name() +
+                        " is not available in the worker thread");
             }
         } finally {
             if (tx != null) {
@@ -122,5 +130,29 @@ public class ActionWorker implements Callable<BenchToolResult> {
         final long duration = fedora.rollbackTransaction(tx);
         fedora.getTxManager().addToCommitTime(duration);
         return new BenchToolResult(0, duration, 0);
+    }
+
+    private BenchToolResult doCreateProperty() throws IOException {
+        final long duration = fedora.sparqlInsert(pid, tx);
+        final float tp = binarySize * 1000f / duration;
+        return new BenchToolResult(tp, duration, binarySize);
+    }
+
+    private BenchToolResult doReadProperty() throws IOException {
+        final long duration = fedora.sparqlSelect(pid, tx);
+        final float tp = binarySize * 1000f / duration;
+        return new BenchToolResult(tp, duration, binarySize);
+    }
+
+    private BenchToolResult doUpdateProperty() throws IOException {
+        final long duration = fedora.sparqlUpdate(pid, tx);
+        final float tp = binarySize * 1000f / duration;
+        return new BenchToolResult(tp, duration, binarySize);
+    }
+
+    private BenchToolResult doDeleteProperty() throws IOException {
+        final long duration = fedora.sparqlDelete(pid, tx);
+        final float tp = binarySize * 1000f / duration;
+        return new BenchToolResult(tp, duration, binarySize);
     }
 }
